@@ -110,6 +110,12 @@ class Matrix:
             lambda val, i, j, idx: val - other,
         )
 
+    def __mul__(self, other):
+        raise NotImplementedError('You must implement this method')
+
+    def __imul__(self, other):
+        return NotImplemented
+
     def __getitem__(self, row):
         return Row(self, row)
 
