@@ -146,7 +146,13 @@ class Matrix:
         raise Matrix._unexpected(other)
 
     def __imul__(self, other):
-        return NotImplemented
+        if isinstance(other, numbers.Number):
+            return self._operate_inplace(
+                other,
+                None,
+                lambda val, i, j, idx: val * other,
+            )
+        raise NotImplementedError('Can not do inplace Matrix multiplication')
 
     def __getitem__(self, row):
         return Row(self, row)
