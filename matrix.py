@@ -10,6 +10,9 @@ class Row:
     def __getitem__(self, col):
         return self.matrix.data[self.matrix._idx(self.row, col)]
 
+    def __setitem__(self, col, value):
+        self.matrix.data[self.matrix._idx(self.row, col)] = value
+
 
 class Matrix:
 
@@ -111,7 +114,36 @@ class Matrix:
         )
 
     def __mul__(self, other):
-        raise NotImplementedError('You must implement this method')
+        if isinstance(other, Matrix):
+            if not self.cols == other.rows:
+                raise ValueError(
+                    'Matrix parameters a.cols and b.rows must match. '
+                    'Given: (c=%d, r=%d), (c=%d, r=%d)' % (
+                        self.rows, self.cols,
+                        other.rows, other.cols,
+                    )
+                )
+
+            new_matrix = Matrix(self.rows, other.cols)
+
+            for row, col, index in ((r, c, new_matrix._idx(r, c))
+                                    for r in range(new_matrix.rows)
+                                    for c in range(new_matrix.cols)):
+                new_matrix.data[index] = sum(
+                    map(lambda c: self.get(row, c) * other.get(c, col), range(self.cols)),
+                    0
+                )
+
+            return new_matrix
+
+        elif isinstance(other, numbers.Number):
+            return self._operate_new(
+                other,
+                None,
+                lambda val, i, j, idx: self.data[idx] * other
+            )
+
+        raise Matrix._unexpected(other)
 
     def __imul__(self, other):
         return NotImplemented
@@ -119,5 +151,11 @@ class Matrix:
     def __getitem__(self, row):
         return Row(self, row)
 
+    def __setitem__(self, row, value):
+        return Row(self, row)
+
     def get(self, row, col):
         return self.data[self._idx(row, col)]
+
+    def set(self, row, col, val):
+        self.data[self._idx(row, col)] = val
