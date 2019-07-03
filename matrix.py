@@ -8,73 +8,102 @@ class Row:
         self.row = row
 
     def __getitem__(self, col):
-        return self.matrix.data[self.matrix._idx(self.row, col)]
+        return self.matrix.data[self.matrix.dt_idx(self.row, col)]
 
     def __setitem__(self, col, value):
-        self.matrix.data[self.matrix._idx(self.row, col)] = value
+        self.matrix.data[self.matrix.dt_idx(self.row, col)] = value
 
 
-class Matrix:
+class Col:
+    def __init__(self, matrix, col):
+        self.matrix = matrix
+        self.col = col
 
-    def __init__(self, rows, cols):
-        self.rows = rows
-        self.cols = cols
-        self.array_length = rows * cols
-        self.data = list(map(lambda _: 0, range(self.array_length)))
+    def __getitem__(self, row):
+        return self.matrix.data[self.matrix.dt_idx(row, self.com)]
 
-    @classmethod
-    def _match(cls, m1, m2):
-        return m2.rows == m1.rows and m2.cols == m1.cols
+    def __setitem__(self, row, value):
+        self.matrix.data[self.matrix.dt_idx(row, self.com)] = value
 
-    @classmethod
-    def _doest_match(cls, m1, m2):
-        return ValueError('Matrix dimensions does not match: (%d, %d), (%d, %d)' % (
-            m1.rows, m1.cols,
-            m2.rows, m2.cols,
-        ))
 
-    @classmethod
-    def _unexpected(cls, other):
-        return ValueError('Unexpected parameter of type %s' % other.__class__.__name__)
+def _match(m1, m2):
+    return m2.rows == m1.rows and m2.cols == m1.cols
 
-    def _idx(self, r, c):
-        return c + self.cols * r
+
+def _doest_match(mat1, mat2):
+    return ValueError('Matrix dimensions does not match: (%d, %d), (%d, %d)' % (
+        mat1.rows, mat1.cols,
+        mat2.rows, mat2.cols,
+    ))
+
+
+def _unexpected(other):
+    return ValueError('Unexpected parameter of type %s' % type(other).__name__)
+
+
+def _get_type(obj):
+    if isinstance(obj, ProxyMatrix):
+        return type(obj.matrix)
+    elif isinstance(obj, MatrixBase):
+        return type(obj)
+
+    raise _unexpected(obj)
+
+
+class MatrixBase:
+
+    # You should define on derived class
+    data = None
+    rows = None
+    cols = None
+    fmt = None
+
+    def __init__(self, fmt=None):
+        self.fmt = fmt or str
+
+    @property
+    def array_length(self):
+        return self.rows * self.cols
+
+    def dt_idx(self, row, col):
+        return col + row * self.cols
 
     def _map(self, fn):
-        for i, j, idx in ((r, c, self._idx(r, c)) for r in range(self.rows) for c in range(self.cols)):
+        for i, j in ((r, c)
+                     for r in range(self.rows)
+                     for c in range(self.cols)):
+            idx = self.dt_idx(i, j)
             val = self.data[idx]
-            self.data[idx] = fn(val, i, j, idx)
+            self.data[idx] = fn(val, i, j)
 
     def print(self):
         for i in range(self.rows):
             for j in range(self.cols):
-                print('%.2f' % self.data[self._idx(i, j)], end=" ")
+                print(self.fmt(self.data[self.dt_idx(i, j)]), end=" ")
             print()
 
-    def randomize(self):
-        for i, _ in enumerate(self.data):
-            self.data[i] = random.uniform(-1, 1)
-
     def _operate_new(self, other, fn_matrix, fn_scalar):
-        if isinstance(other, Matrix):
-            if not Matrix._match(self, other):
-                raise Matrix._doest_match(self, other)
+        if isinstance(other, MatrixBase):
+            if not _match(self, other):
+                raise _doest_match(self, other)
 
-            new_matrix = Matrix(other.rows, other.cols)
+            cls = _get_type(other)
+            new_matrix = cls(other.rows, other.cols)
             new_matrix._map(fn_matrix)
             return new_matrix
 
         elif isinstance(other, numbers.Number):
-            new_matrix = Matrix(self.rows, self.cols)
+            cls = _get_type(self)
+            new_matrix = cls(self.rows, self.cols)
             new_matrix._map(fn_scalar)
             return new_matrix
 
-        raise Matrix._unexpected(other)
+        raise _unexpected(other)
 
     def _operate_inplace(self, other, fn_matrix, fn_scalar):
-        if isinstance(other, Matrix):
-            if not Matrix._match(self, other):
-                raise Matrix._doest_match(self, other)
+        if isinstance(other, MatrixBase):
+            if not _match(self, other):
+                raise _doest_match(self, other)
 
             self._map(fn_matrix)
             return self
@@ -83,38 +112,52 @@ class Matrix:
             self._map(fn_scalar)
             return self
 
-        raise Matrix._unexpected(other)
+        raise _unexpected(other)
+
+    def randomize(self, rand=lambda: random.uniform(-1, 1)):
+        for i, _ in enumerate(self.data):
+            self.data[i] = rand()
 
     def __add__(self, other):
         return self._operate_new(
             other,
-            lambda val, i, j, idx: self.data[idx] + other.data[idx],
-            lambda val, i, j, idx: self.data[idx] + other,
+            lambda val, i, j: self.get(i, j) + other.get(i, j),
+            lambda val, i, j: self.get(i, j) + other,
         )
 
     def __iadd__(self, other):
         return self._operate_inplace(
             other,
-            lambda val, i, j, idx: val + other.data[idx],
-            lambda val, i, j, idx: val + other,
+            lambda val, i, j: val + other.get(i, j),
+            lambda val, i, j: val + other,
         )
+
+    def __radd__(self, other):
+        return self + other
 
     def __sub__(self, other):
         return self._operate_new(
             other,
-            lambda val, i, j, idx: self.data[idx] - other.data[idx],
-            lambda val, i, j, idx: self.data[idx] - other,
+            lambda val, i, j: self.get(i, j) - other.get(i, j),
+            lambda val, i, j: self.get(i, j) - other,
         )
 
     def __isub__(self, other):
         return self._operate_inplace(
             other,
-            lambda val, i, j, idx: val - other.data[idx],
-            lambda val, i, j, idx: val - other,
+            lambda val, i, j: val - other.get(i, j),
+            lambda val, i, j: val - other,
+        )
+
+    def __rsub__(self, other):
+        return self._operate_new(
+            other,
+            lambda val, i, j: other.get(i, j) - self.get(i, j),
+            lambda val, i, j: other - self.get(i, j)
         )
 
     def __mul__(self, other):
-        if isinstance(other, Matrix):
+        if isinstance(other, MatrixBase):
             if not self.cols == other.rows:
                 raise ValueError(
                     'Matrix parameters a.cols and b.rows must match. '
@@ -124,9 +167,10 @@ class Matrix:
                     )
                 )
 
-            new_matrix = Matrix(self.rows, other.cols)
+            cls = _get_type(self)
+            new_matrix = cls(self.rows, other.cols)
 
-            for row, col, index in ((r, c, new_matrix._idx(r, c))
+            for row, col, index in ((r, c, new_matrix.dt_idx(r, c))
                                     for r in range(new_matrix.rows)
                                     for c in range(new_matrix.cols)):
                 new_matrix.data[index] = sum(
@@ -140,19 +184,22 @@ class Matrix:
             return self._operate_new(
                 other,
                 None,
-                lambda val, i, j, idx: self.data[idx] * other
+                lambda val, i, j: self.get(i, j) * other
             )
 
-        raise Matrix._unexpected(other)
+        raise _unexpected(other)
 
     def __imul__(self, other):
         if isinstance(other, numbers.Number):
             return self._operate_inplace(
                 other,
                 None,
-                lambda val, i, j, idx: val * other,
+                lambda val, i, j: val * other,
             )
         raise NotImplementedError('Can not do inplace Matrix multiplication')
+
+    def __rmul__(self, other):
+        return self * other
 
     def __getitem__(self, row):
         return Row(self, row)
@@ -161,7 +208,99 @@ class Matrix:
         return Row(self, row)
 
     def get(self, row, col):
-        return self.data[self._idx(row, col)]
+        return self.data[self.dt_idx(row, col)]
 
     def set(self, row, col, val):
-        self.data[self._idx(row, col)] = val
+        self.data[self.dt_idx(row, col)] = val
+
+
+class Matrix(MatrixBase):
+    def __init__(self, rows, cols):
+        super().__init__()
+
+        self.rows = rows
+        self.cols = cols
+        self.data = [0] * self.array_length
+    
+    @classmethod
+    def from_array(cls, rows, cols, array):
+        matrix = cls(rows, cols)
+        matrix._map(lambda val, i, j: array[matrix.dt_idx(i, j)])
+        return matrix
+
+    @property
+    def t(self):
+        return ProxyTransposed(self)
+
+
+class ProxyMatrix(MatrixBase):
+
+    def __init__(self, matrix):
+        super().__init__()
+        self.matrix = matrix
+
+    @property
+    def rows(self):
+        return self.matrix.cols
+
+    @property
+    def cols(self):
+        return self.matrix.cols
+
+    @property
+    def data(self):
+        return self.matrix.data
+
+
+class ProxyTransposed(ProxyMatrix):
+
+    def __init__(self, matrix):
+        super().__init__(matrix)
+        self.fmt = matrix.fmt
+
+    @property
+    def rows(self):
+        return self.matrix.cols
+
+    @property
+    def cols(self):
+        return self.matrix.rows
+
+    def dt_idx(self, row, col):
+        return row + col * self.rows
+
+    def __add__(self, other):
+        return self._operate_new(
+            other,
+            lambda val, i, j: self.get(i, j) + other.get(i, j),
+            lambda val, i, j: self.get(i, j) + other,
+        )
+
+    def __iadd__(self, other):
+        raise TypeError('Unsuported operation on %s', type(self).__name__)
+
+    def __sub__(self, other):
+        return self._operate_new(
+            other,
+            lambda val, i, j: self.get(i, j) - other.get(i, j),
+            lambda val, i, j: self.get(i, j) - other,
+        )
+
+    def __isub__(self, other):
+        raise TypeError('Unsuported operation on %s', type(self).__name__)
+
+    def __mul__(self, other):
+        if isinstance(other, MatrixBase):
+            return super().__mul__(other)
+
+        elif isinstance(other, numbers.Number):
+            return self._operate_new(
+                other,
+                None,
+                lambda val, i, j, idx: self.get(i, j) * other
+            )
+
+        raise _unexpected(other)
+
+    def __imul__(self):
+        raise TypeError('Unsuported operation on %s', type(self).__name__)
