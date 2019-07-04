@@ -3,7 +3,7 @@ import unittest
 from matrix import Matrix
 
 
-class TestMatrix(unittest.TestCase):
+class TestMatrix(unittest.TestCase):  #pylint: disable=too-many-instance-attributes
 
     def setUp(self) -> None:
         self.arr_1 = [1, 2, 1,
@@ -29,30 +29,74 @@ class TestMatrix(unittest.TestCase):
                          8, 5, 2,
                          7, 4, 1]
 
-    def test_add(self):
-        m1 = Matrix.from_array(3, 3, self.arr_1)
-        m2 = Matrix.from_array(3, 2, self.arr_2)
-        m3 = Matrix.from_array(3, 3, self.arr_3)
+        self.m1 = Matrix.from_array(3, 3, self.arr_1)  # pylint: disable=invalid-name
+        self.m2 = Matrix.from_array(3, 2, self.arr_2)  # pylint: disable=invalid-name
+        self.m3 = Matrix.from_array(3, 3, self.arr_3)  # pylint: disable=invalid-name
 
-        self.assertListEqual((m1 + m3).data, list(map(sum, zip(self.arr_1, self.arr_3))))
+    def test_add(self) -> None:
+        self.assertListEqual((self.m1 + self.m3).data,
+                             list(map(sum, zip(self.arr_1, self.arr_3))))
 
-        self.assertListEqual((m2 + 2).data, list(map(lambda i: i + 2, self.arr_2)))
-        self.assertListEqual((2 + m2).data, list(map(lambda i: i + 2, self.arr_2)))
-        self.assertListEqual((m3 + 2).data, list(map(lambda i: i + 2, self.arr_3)))
-        self.assertListEqual((2 + m3).data, list(map(lambda i: i + 2, self.arr_3)))
+        self.assertListEqual((self.m2 + 2).data, list(map(lambda i: i + 2, self.arr_2)))
+        self.assertListEqual((2 + self.m2).data, list(map(lambda i: 2 + i, self.arr_2)))
+        self.assertListEqual((self.m3 + 2).data, list(map(lambda i: i + 2, self.arr_3)))
+        self.assertListEqual((2 + self.m3).data, list(map(lambda i: 2 + i, self.arr_3)))
 
-        m2 += 2
-        self.assertListEqual(m2.data, list(map(lambda i: i + 2, self.arr_2)))
+        self.m2 += 2
+        self.assertListEqual(self.m2.data, list(map(lambda i: i + 2, self.arr_2)))
 
-        m1 += m3
-        self.assertListEqual(m1.data, list(map(sum, zip(self.arr_1, self.arr_3))))
+        self.m1 += self.m3
+        self.assertListEqual(self.m1.data, list(map(sum, zip(self.arr_1, self.arr_3))))
 
-        def r1():
-            m1 + m2
+        def raise1():
+            return self.m1 + self.m2
 
-        def r2():
+        def raise2():
+            # pylint: disable=invalid-name
             m = Matrix.from_array(3, 3, self.arr_1)
-            m += m2
+            m += self.m2
+            return m
 
-        self.assertRaises(ValueError, r1)
-        self.assertRaises(ValueError, r2)
+        self.assertRaises(ValueError, raise1)
+        self.assertRaises(ValueError, raise2)
+
+    def test_sub(self) -> None:
+        def sub(args):
+            # pylint: disable=invalid-name
+            it = iter(args)
+            result = next(it)
+            for i in it:
+                result -= i
+            return result
+
+        self.assertListEqual((self.m1 - self.m3).data,
+                             list(map(sub, zip(self.arr_1, self.arr_3))))
+
+        self.assertListEqual((self.m2 - 2).data, list(map(lambda i: i - 2, self.arr_2)))
+        self.assertListEqual((2 - self.m2).data, list(map(lambda i: 2 - i, self.arr_2)))
+        self.assertListEqual((self.m3 - 2).data, list(map(lambda i: i - 2, self.arr_3)))
+        self.assertListEqual((2 - self.m3).data, list(map(lambda i: 2 - i, self.arr_3)))
+
+        self.m2 -= 2
+        self.assertListEqual(self.m2.data, list(map(lambda i: i - 2, self.arr_2)))
+
+        self.m1 -= self.m3
+        self.assertListEqual(self.m1.data, list(map(sub, zip(self.arr_1, self.arr_3))))
+
+        def raise1():
+            return self.m1 - self.m2
+
+        def raise2():
+            # pylint: disable=invalid-name
+            m = Matrix.from_array(3, 3, self.arr_1)
+            m -= self.m2
+            return m
+
+        self.assertRaises(ValueError, raise1)
+        self.assertRaises(ValueError, raise2)
+
+if __name__ == '__main__':
+    # python -m tests
+    # python -m unittest -v tests
+    # python -m unittest discover -v -s tests
+    unittest.main()

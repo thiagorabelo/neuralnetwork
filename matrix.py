@@ -221,7 +221,7 @@ class Matrix(MatrixBase):
         self.rows = rows
         self.cols = cols
         self.data = [0] * self.array_length
-    
+
     @classmethod
     def from_array(cls, rows, cols, array):
         matrix = cls(rows, cols)
@@ -302,5 +302,5 @@ class ProxyTransposed(ProxyMatrix):
 
         raise _unexpected(other)
 
-    def __imul__(self):
+    def __imul__(self, other):
         raise TypeError('Unsuported operation on %s', type(self).__name__)
