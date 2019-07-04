@@ -65,13 +65,20 @@ class MatrixBase:
     def array_length(self):
         return self.rows * self.cols
 
+    @property
+    def indexes(self):
+        return ((row, col)
+                for row in range(self.rows)
+                for col in range(self.cols))
+
+    def __len__(self):
+        return self.array_length
+
     def dt_idx(self, row, col):
         return col + row * self.cols
 
     def _map(self, fn):
-        for i, j in ((r, c)
-                     for r in range(self.rows)
-                     for c in range(self.cols)):
+        for i, j in self.indexes:
             idx = self.dt_idx(i, j)
             val = self.data[idx]
             self.data[idx] = fn(val, i, j)
@@ -170,9 +177,8 @@ class MatrixBase:
             cls = _get_type(self)
             new_matrix = cls(self.rows, other.cols)
 
-            for row, col, index in ((r, c, new_matrix.dt_idx(r, c))
-                                    for r in range(new_matrix.rows)
-                                    for c in range(new_matrix.cols)):
+            for row, col in new_matrix.indexes:
+                index = new_matrix.dt_idx(row, col)
                 new_matrix.data[index] = sum(
                     map(lambda c: self.get(row, c) * other.get(c, col), range(self.cols)),
                     0
@@ -196,7 +202,7 @@ class MatrixBase:
                 None,
                 lambda val, i, j: val * other,
             )
-        raise NotImplementedError('Can not do inplace Matrix multiplication')
+        raise ValueError('Can not do inplace Matrix multiplication')
 
     def __rmul__(self, other):
         return self * other
@@ -213,6 +219,12 @@ class MatrixBase:
     def set(self, row, col, val):
         self.data[self.dt_idx(row, col)] = val
 
+    def __iter__(self):
+        return (
+            self.data[self.dt_idx(row, col)]
+            for row, col in self.indexes
+        )
+
 
 class Matrix(MatrixBase):
     def __init__(self, rows, cols):
@@ -224,13 +236,24 @@ class Matrix(MatrixBase):
 
     @classmethod
     def from_array(cls, rows, cols, array):
-        matrix = cls(rows, cols)
-        matrix._map(lambda val, i, j: array[matrix.dt_idx(i, j)])
-        return matrix
+        if not isinstance(array, (list, tuple)):
+            array = list(array)
+
+        if rows * cols == len(array):
+            matrix = cls(rows, cols)
+            matrix._map(lambda val, i, j: array[matrix.dt_idx(i, j)])
+            return matrix
+
+        raise ValueError("Total of array elements must be %d (%d * %d) but given %d" % (
+            rows * cols, rows, cols, len(array)
+        ))
 
     @property
     def t(self):
         return ProxyTransposed(self)
+
+    def transpose(self):
+        return self.t * 1
 
 
 class ProxyMatrix(MatrixBase):
@@ -269,38 +292,18 @@ class ProxyTransposed(ProxyMatrix):
     def dt_idx(self, row, col):
         return row + col * self.rows
 
-    def __add__(self, other):
-        return self._operate_new(
-            other,
-            lambda val, i, j: self.get(i, j) + other.get(i, j),
-            lambda val, i, j: self.get(i, j) + other,
-        )
-
     def __iadd__(self, other):
         raise TypeError('Unsuported operation on %s', type(self).__name__)
-
-    def __sub__(self, other):
-        return self._operate_new(
-            other,
-            lambda val, i, j: self.get(i, j) - other.get(i, j),
-            lambda val, i, j: self.get(i, j) - other,
-        )
 
     def __isub__(self, other):
         raise TypeError('Unsuported operation on %s', type(self).__name__)
 
-    def __mul__(self, other):
-        if isinstance(other, MatrixBase):
-            return super().__mul__(other)
-
-        elif isinstance(other, numbers.Number):
-            return self._operate_new(
-                other,
-                None,
-                lambda val, i, j, idx: self.get(i, j) * other
-            )
-
-        raise _unexpected(other)
-
     def __imul__(self, other):
         raise TypeError('Unsuported operation on %s', type(self).__name__)
+
+    @property
+    def t(self):
+        return self.matrix
+
+    def transpose(self):
+        return self.t * 1

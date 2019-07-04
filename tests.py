@@ -3,12 +3,12 @@ import unittest
 from matrix import Matrix
 
 
-class TestMatrix(unittest.TestCase):  #pylint: disable=too-many-instance-attributes
+class TestMatrix(unittest.TestCase):  # pylint: disable=too-many-instance-attributes
 
     def setUp(self) -> None:
         self.arr_1 = [1, 2, 1,
                       0, 1, 0,
-                      1, 3, 4]
+                      2, 3, 4]
 
         self.arr_2 = [2, 5,
                       6, 7,
@@ -18,7 +18,7 @@ class TestMatrix(unittest.TestCase):  #pylint: disable=too-many-instance-attribu
                       6, 5, 4,
                       3, 2, 1]
 
-        self.transp_1 = [1, 0, 1,
+        self.transp_1 = [1, 0, 2,
                          2, 1, 3,
                          1, 0, 4]
 
@@ -29,24 +29,28 @@ class TestMatrix(unittest.TestCase):  #pylint: disable=too-many-instance-attribu
                          8, 5, 2,
                          7, 4, 1]
 
+        self.mul_m1_m2 = [15, 27,
+                          6,  7,
+                          26, 63]
+
         self.m1 = Matrix.from_array(3, 3, self.arr_1)  # pylint: disable=invalid-name
         self.m2 = Matrix.from_array(3, 2, self.arr_2)  # pylint: disable=invalid-name
         self.m3 = Matrix.from_array(3, 3, self.arr_3)  # pylint: disable=invalid-name
 
     def test_add(self) -> None:
-        self.assertListEqual((self.m1 + self.m3).data,
+        self.assertListEqual(list(self.m1 + self.m3),
                              list(map(sum, zip(self.arr_1, self.arr_3))))
 
-        self.assertListEqual((self.m2 + 2).data, list(map(lambda i: i + 2, self.arr_2)))
-        self.assertListEqual((2 + self.m2).data, list(map(lambda i: 2 + i, self.arr_2)))
-        self.assertListEqual((self.m3 + 2).data, list(map(lambda i: i + 2, self.arr_3)))
-        self.assertListEqual((2 + self.m3).data, list(map(lambda i: 2 + i, self.arr_3)))
+        self.assertListEqual(list(self.m2 + 2), list(map(lambda i: i + 2, self.arr_2)))
+        self.assertListEqual(list(2 + self.m2), list(map(lambda i: 2 + i, self.arr_2)))
+        self.assertListEqual(list(self.m3 + 2), list(map(lambda i: i + 2, self.arr_3)))
+        self.assertListEqual(list(2 + self.m3), list(map(lambda i: 2 + i, self.arr_3)))
 
         self.m2 += 2
-        self.assertListEqual(self.m2.data, list(map(lambda i: i + 2, self.arr_2)))
+        self.assertListEqual(list(self.m2), list(map(lambda i: i + 2, self.arr_2)))
 
         self.m1 += self.m3
-        self.assertListEqual(self.m1.data, list(map(sum, zip(self.arr_1, self.arr_3))))
+        self.assertListEqual(list(self.m1), list(map(sum, zip(self.arr_1, self.arr_3))))
 
         def raise1():
             return self.m1 + self.m2
@@ -69,19 +73,19 @@ class TestMatrix(unittest.TestCase):  #pylint: disable=too-many-instance-attribu
                 result -= i
             return result
 
-        self.assertListEqual((self.m1 - self.m3).data,
+        self.assertListEqual(list(self.m1 - self.m3),
                              list(map(sub, zip(self.arr_1, self.arr_3))))
 
-        self.assertListEqual((self.m2 - 2).data, list(map(lambda i: i - 2, self.arr_2)))
-        self.assertListEqual((2 - self.m2).data, list(map(lambda i: 2 - i, self.arr_2)))
-        self.assertListEqual((self.m3 - 2).data, list(map(lambda i: i - 2, self.arr_3)))
-        self.assertListEqual((2 - self.m3).data, list(map(lambda i: 2 - i, self.arr_3)))
+        self.assertListEqual(list(self.m2 - 2), list(map(lambda i: i - 2, self.arr_2)))
+        self.assertListEqual(list(2 - self.m2), list(map(lambda i: 2 - i, self.arr_2)))
+        self.assertListEqual(list(self.m3 - 2), list(map(lambda i: i - 2, self.arr_3)))
+        self.assertListEqual(list(2 - self.m3), list(map(lambda i: 2 - i, self.arr_3)))
 
         self.m2 -= 2
-        self.assertListEqual(self.m2.data, list(map(lambda i: i - 2, self.arr_2)))
+        self.assertListEqual(list(self.m2), list(map(lambda i: i - 2, self.arr_2)))
 
         self.m1 -= self.m3
-        self.assertListEqual(self.m1.data, list(map(sub, zip(self.arr_1, self.arr_3))))
+        self.assertListEqual(list(self.m1), list(map(sub, zip(self.arr_1, self.arr_3))))
 
         def raise1():
             return self.m1 - self.m2
@@ -94,6 +98,35 @@ class TestMatrix(unittest.TestCase):  #pylint: disable=too-many-instance-attribu
 
         self.assertRaises(ValueError, raise1)
         self.assertRaises(ValueError, raise2)
+
+    def test_mul(self) -> None:
+        self.assertListEqual(list(self.m1 * self.m2), self.mul_m1_m2)
+        self.assertListEqual(list(self.m1 * 2), list(map(lambda i: i * 2, self.arr_1)))
+        self.assertListEqual(list(2 * self.m1), list(map(lambda i: i * 2, self.arr_1)))
+
+        def raise1():
+            return self.m1 * Matrix.from_array(2, 3, self.transp_2)
+
+        def raise2():
+            m = Matrix.from_array(3, 3, self.m1)
+            m *= self.m2
+            return m
+
+        self.assertRaises(ValueError, raise1)
+        self.assertRaises(ValueError, raise2)
+
+    def test_transpose(self) -> None:
+        self.assertListEqual(list(self.m1.t), self.transp_1)
+        self.assertListEqual(list(self.m1.t.t), self.arr_1)
+        self.assertListEqual(list(self.m1.transpose()), self.transp_1)
+        self.assertListEqual(list(self.m1 * Matrix.from_array(2, 3, self.transp_2).t), self.mul_m1_m2)
+
+        t1 = Matrix.from_array(3, 3, self.transp_1)
+        t2 = Matrix.from_array(2, 3, self.transp_2)
+
+        self.assertListEqual(list(t1.t * self.m2), self.mul_m1_m2)
+        self.assertListEqual(list(t1.t * t2.t), self.mul_m1_m2)
+
 
 if __name__ == '__main__':
     # python -m tests
