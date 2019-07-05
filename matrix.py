@@ -84,7 +84,7 @@ class MatrixBase:
     def dt_idx(self, row: int, col: int) -> int:
         return col + row * self.cols
 
-    def _map(self, fn: Callable[[Number, int, int], Number]) -> None:
+    def map(self, fn: Callable[[Number, int, int], Number]) -> None:
         for i, j in self.indexes:
             idx = self.dt_idx(i, j)
             val = self.data[idx]
@@ -107,13 +107,13 @@ class MatrixBase:
 
             cls = _get_type(other)
             new_matrix = cls(other.rows, other.cols)
-            new_matrix._map(fn_matrix)
+            new_matrix.map(fn_matrix)
             return new_matrix
 
         elif isinstance(other, numbers.Number):
             cls = _get_type(self)
             new_matrix = cls(self.rows, self.cols)
-            new_matrix._map(fn_scalar)
+            new_matrix.map(fn_scalar)
             return new_matrix
 
         raise _unexpected(other)
@@ -127,11 +127,11 @@ class MatrixBase:
             if not _match(self, other):
                 raise _doest_match(self, other)
 
-            self._map(fn_matrix)
+            self.map(fn_matrix)
             return self
 
         elif isinstance(other, numbers.Number):
-            self._map(fn_scalar)
+            self.map(fn_scalar)
             return self
 
         raise _unexpected(other)
@@ -256,7 +256,7 @@ class Matrix(MatrixBase):
 
         if rows * cols == len(array):
             matrix = cls(rows, cols)
-            matrix._map(lambda val, i, j: array[matrix.dt_idx(i, j)])
+            matrix.map(lambda val, i, j: array[matrix.dt_idx(i, j)])
             return matrix
 
         raise ValueError("Total of array elements must be %d (%d * %d) but given %d" % (
