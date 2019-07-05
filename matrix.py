@@ -1,47 +1,54 @@
+from __future__ import annotations
+
 import numbers
 import random
+from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple
+
+
+Number = Union[int, float]
+MBase = TypeVar('MBase', bound='MatrixBase')
 
 
 class Row:
-    def __init__(self, matrix, row):
+    def __init__(self, matrix: Matrix, row: int) -> None:
         self.matrix = matrix
         self.row = row
 
-    def __getitem__(self, col):
+    def __getitem__(self, col: int) -> Number:
         return self.matrix.data[self.matrix.dt_idx(self.row, col)]
 
-    def __setitem__(self, col, value):
+    def __setitem__(self, col: int, value: Number) -> None:
         self.matrix.data[self.matrix.dt_idx(self.row, col)] = value
 
 
 class Col:
-    def __init__(self, matrix, col):
+    def __init__(self, matrix: Matrix, col: int) -> None:
         self.matrix = matrix
         self.col = col
 
-    def __getitem__(self, row):
+    def __getitem__(self, row: int) -> Number:
         return self.matrix.data[self.matrix.dt_idx(row, self.com)]
 
-    def __setitem__(self, row, value):
+    def __setitem__(self, row: int, value: Number) -> None:
         self.matrix.data[self.matrix.dt_idx(row, self.com)] = value
 
 
-def _match(m1, m2):
+def _match(m1: Matrix, m2: Matrix) -> bool:
     return m2.rows == m1.rows and m2.cols == m1.cols
 
 
-def _doest_match(mat1, mat2):
+def _doest_match(mat1: Matrix, mat2: Matrix) -> ValueError:
     return ValueError('Matrix dimensions does not match: (%d, %d), (%d, %d)' % (
         mat1.rows, mat1.cols,
         mat2.rows, mat2.cols,
     ))
 
 
-def _unexpected(other):
+def _unexpected(other: Matrix) -> ValueError:
     return ValueError('Unexpected parameter of type %s' % type(other).__name__)
 
 
-def _get_type(obj):
+def _get_type(obj: MBase) -> Type[Matrix]:
     if isinstance(obj, ProxyMatrix):
         return type(obj.matrix)
     elif isinstance(obj, MatrixBase):
@@ -53,43 +60,47 @@ def _get_type(obj):
 class MatrixBase:
 
     # You should define on derived class
-    data = None
-    rows = None
-    cols = None
-    fmt = None
+    data: List[Number] = None
+    rows: int = None
+    cols: int = None
+    fmt: Callable[[Number], Text] = None
 
-    def __init__(self, fmt=None):
+    def __init__(self, fmt: Callable[[Number], Text] = None) -> None:
         self.fmt = fmt or str
 
     @property
-    def array_length(self):
+    def array_length(self) -> int:
         return self.rows * self.cols
 
     @property
-    def indexes(self):
+    def indexes(self) -> Iterable[Tuple[int, int]]:
         return ((row, col)
                 for row in range(self.rows)
                 for col in range(self.cols))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.array_length
 
-    def dt_idx(self, row, col):
+    def dt_idx(self, row: int, col: int) -> int:
         return col + row * self.cols
 
-    def _map(self, fn):
+    def _map(self, fn: Callable[[Number, int, int], Number]) -> None:
         for i, j in self.indexes:
             idx = self.dt_idx(i, j)
             val = self.data[idx]
             self.data[idx] = fn(val, i, j)
 
-    def print(self):
+    def print(self) -> None:
         for i in range(self.rows):
             for j in range(self.cols):
                 print(self.fmt(self.data[self.dt_idx(i, j)]), end=" ")
             print()
 
-    def _operate_new(self, other, fn_matrix, fn_scalar):
+    def _operate_new(self,
+                     other: MBase,
+                     fn_matrix: Callable[[Number, int, int], Number],
+                     fn_scalar: Callable[[Number, int, int], Number]) -> MBase:
+
         if isinstance(other, MatrixBase):
             if not _match(self, other):
                 raise _doest_match(self, other)
@@ -107,7 +118,11 @@ class MatrixBase:
 
         raise _unexpected(other)
 
-    def _operate_inplace(self, other, fn_matrix, fn_scalar):
+    def _operate_inplace(self,
+                         other: MBase,
+                         fn_matrix: Callable[[Number, int, int], Number],
+                         fn_scalar: Callable[[Number, int, int], Number]) -> MBase:
+
         if isinstance(other, MatrixBase):
             if not _match(self, other):
                 raise _doest_match(self, other)
@@ -121,49 +136,49 @@ class MatrixBase:
 
         raise _unexpected(other)
 
-    def randomize(self, rand=lambda: random.uniform(-1, 1)):
+    def randomize(self, rand: Callable[[], Number] = lambda: random.uniform(-1, 1)) -> None:
         for i, _ in enumerate(self.data):
             self.data[i] = rand()
 
-    def __add__(self, other):
+    def __add__(self, other: MBase) -> MBase:
         return self._operate_new(
             other,
             lambda val, i, j: self.get(i, j) + other.get(i, j),
             lambda val, i, j: self.get(i, j) + other,
         )
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: MBase) -> MBase:
         return self._operate_inplace(
             other,
             lambda val, i, j: val + other.get(i, j),
             lambda val, i, j: val + other,
         )
 
-    def __radd__(self, other):
+    def __radd__(self, other: MBase) -> MBase:
         return self + other
 
-    def __sub__(self, other):
+    def __sub__(self, other: MBase) -> MBase:
         return self._operate_new(
             other,
             lambda val, i, j: self.get(i, j) - other.get(i, j),
             lambda val, i, j: self.get(i, j) - other,
         )
 
-    def __isub__(self, other):
+    def __isub__(self, other: MBase) -> MBase:
         return self._operate_inplace(
             other,
             lambda val, i, j: val - other.get(i, j),
             lambda val, i, j: val - other,
         )
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: MBase) -> MBase:
         return self._operate_new(
             other,
             lambda val, i, j: other.get(i, j) - self.get(i, j),
             lambda val, i, j: other - self.get(i, j)
         )
 
-    def __mul__(self, other):
+    def __mul__(self, other: MBase) -> MBase:
         if isinstance(other, MatrixBase):
             if not self.cols == other.rows:
                 raise ValueError(
@@ -195,7 +210,7 @@ class MatrixBase:
 
         raise _unexpected(other)
 
-    def __imul__(self, other):
+    def __imul__(self, other: MBase) -> MBase:
         if isinstance(other, numbers.Number):
             return self._operate_inplace(
                 other,
@@ -204,30 +219,30 @@ class MatrixBase:
             )
         raise ValueError('Can not do inplace Matrix multiplication')
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: MBase) -> MBase:
         return self * other
 
-    def __getitem__(self, row):
+    def __getitem__(self, row: int) -> Row:
         return Row(self, row)
 
-    def __setitem__(self, row, value):
+    def __setitem__(self, row: int, value: Number) -> Row:
         return Row(self, row)
 
-    def get(self, row, col):
-        return self.data[self.dt_idx(row, col)]
-
-    def set(self, row, col, val):
-        self.data[self.dt_idx(row, col)] = val
-
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Number]:
         return (
             self.data[self.dt_idx(row, col)]
             for row, col in self.indexes
         )
 
+    def get(self, row: int, col: int) -> Number:
+        return self.data[self.dt_idx(row, col)]
+
+    def set(self, row: int, col: int, val: Number) -> None:
+        self.data[self.dt_idx(row, col)] = val
+
 
 class Matrix(MatrixBase):
-    def __init__(self, rows, cols):
+    def __init__(self, rows: int, cols: int) -> None:
         super().__init__()
 
         self.rows = rows
@@ -235,7 +250,7 @@ class Matrix(MatrixBase):
         self.data = [0] * self.array_length
 
     @classmethod
-    def from_array(cls, rows, cols, array):
+    def from_array(cls, rows: int, cols: int, array: List[Number]) -> Matrix:
         if not isinstance(array, (list, tuple)):
             array = list(array)
 
@@ -249,61 +264,65 @@ class Matrix(MatrixBase):
         ))
 
     @property
-    def t(self):
+    def t(self) -> ProxyTransposed:
         return ProxyTransposed(self)
 
-    def transpose(self):
+    def transpose(self) -> Matrix:
         return self.t * 1
 
 
 class ProxyMatrix(MatrixBase):
 
-    def __init__(self, matrix):
+    def __init__(self, matrix: MBase) -> None:
         super().__init__()
         self.matrix = matrix
 
     @property
-    def rows(self):
+    def rows(self) -> int:
         return self.matrix.cols
 
     @property
-    def cols(self):
+    def cols(self) -> int:
         return self.matrix.cols
 
     @property
-    def data(self):
+    def data(self) -> List[Number]:
         return self.matrix.data
 
 
 class ProxyTransposed(ProxyMatrix):
 
-    def __init__(self, matrix):
+    def __init__(self, matrix: MBase) -> None:
         super().__init__(matrix)
         self.fmt = matrix.fmt
 
     @property
-    def rows(self):
+    def rows(self) -> int:
         return self.matrix.cols
 
     @property
-    def cols(self):
+    def cols(self) -> int:
         return self.matrix.rows
 
-    def dt_idx(self, row, col):
+    def dt_idx(self, row: int, col: int) -> int:
         return row + col * self.rows
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: MBase) -> MBase:
         raise TypeError('Unsuported operation on %s', type(self).__name__)
 
-    def __isub__(self, other):
+    def __isub__(self, other: MBase) -> MBase:
         raise TypeError('Unsuported operation on %s', type(self).__name__)
 
-    def __imul__(self, other):
+    def __imul__(self, other: MBase) -> MBase:
         raise TypeError('Unsuported operation on %s', type(self).__name__)
 
     @property
-    def t(self):
+    def t(self) -> MBase:
         return self.matrix
 
-    def transpose(self):
+    def transpose(self) -> MBase:
         return self.t * 1
+
+
+MBase = Number = None
+del Number, MBase

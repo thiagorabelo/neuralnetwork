@@ -104,6 +104,13 @@ class TestMatrix(unittest.TestCase):  # pylint: disable=too-many-instance-attrib
         self.assertListEqual(list(self.m1 * 2), list(map(lambda i: i * 2, self.arr_1)))
         self.assertListEqual(list(2 * self.m1), list(map(lambda i: i * 2, self.arr_1)))
 
+        mat1 = Matrix.from_array(1, 2, [1, 2])
+        mat2 = Matrix.from_array(2, 2, [2, 5, 6, 7])
+        mult = [14, 19]
+        self.assertListEqual(list(mat1 * mat2), mult)
+        self.assertRaises(ValueError, lambda: mat1.t * mat2.t)
+        self.assertListEqual(list(mat2.t * mat1.t), mult)
+
         def raise1():
             return self.m1 * Matrix.from_array(2, 3, self.transp_2)
 
