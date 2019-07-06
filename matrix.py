@@ -27,14 +27,14 @@ class Col:
         self.col = col
 
     def __getitem__(self, row: int) -> Number:
-        return self.matrix.data[self.matrix.dt_idx(row, self.com)]
+        return self.matrix.data[self.matrix.dt_idx(row, self.col)]
 
     def __setitem__(self, row: int, value: Number) -> None:
-        self.matrix.data[self.matrix.dt_idx(row, self.com)] = value
+        self.matrix.data[self.matrix.dt_idx(row, self.col)] = value
 
 
-def _match(m1: Matrix, m2: Matrix) -> bool:
-    return m2.rows == m1.rows and m2.cols == m1.cols
+def _match(mat1: Matrix, mat2: Matrix) -> bool:
+    return mat2.rows == mat1.rows and mat2.cols == mat1.cols
 
 
 def _doest_match(mat1: Matrix, mat2: Matrix) -> ValueError:
@@ -84,11 +84,11 @@ class MatrixBase:
     def dt_idx(self, row: int, col: int) -> int:
         return col + row * self.cols
 
-    def map(self, fn: Callable[[Number, int, int], Number]) -> None:
+    def map(self, func: Callable[[Number, int, int], Number]) -> None:
         for i, j in self.indexes:
             idx = self.dt_idx(i, j)
             val = self.data[idx]
-            self.data[idx] = fn(val, i, j)
+            self.data[idx] = func(val, i, j)
 
     def print(self) -> None:
         for i in range(self.rows):
@@ -110,7 +110,7 @@ class MatrixBase:
             new_matrix.map(fn_matrix)
             return new_matrix
 
-        elif isinstance(other, numbers.Number):
+        if isinstance(other, numbers.Number):
             cls = _get_type(self)
             new_matrix = cls(self.rows, self.cols)
             new_matrix.map(fn_scalar)
@@ -130,7 +130,7 @@ class MatrixBase:
             self.map(fn_matrix)
             return self
 
-        elif isinstance(other, numbers.Number):
+        if isinstance(other, numbers.Number):
             self.map(fn_scalar)
             return self
 
@@ -182,7 +182,7 @@ class MatrixBase:
         if isinstance(other, MatrixBase):
             if not self.cols == other.rows:
                 raise ValueError(
-                    'Matrix parameters a.cols and b.rows must match. '
+                    'Matrix parameters a.cols and b.rows must match. '  # pylint: disable=bad-string-format-type
                     'Given: (c=%d, r=%d), (c=%d, r=%d)' % (
                         self.rows, self.cols,
                         other.rows, other.cols,
@@ -195,13 +195,14 @@ class MatrixBase:
             for row, col in new_matrix.indexes:
                 index = new_matrix.dt_idx(row, col)
                 new_matrix.data[index] = sum(
-                    map(lambda c: self.get(row, c) * other.get(c, col), range(self.cols)),
+                    map(lambda c: self.get(row, c) * other.get(c, col),  # pylint: disable=cell-var-from-loop
+                        range(self.cols)),
                     0
                 )
 
             return new_matrix
 
-        elif isinstance(other, numbers.Number):
+        if isinstance(other, numbers.Number):
             return self._operate_new(
                 other,
                 None,
@@ -264,7 +265,7 @@ class Matrix(MatrixBase):
         ))
 
     @property
-    def t(self) -> ProxyTransposed:
+    def t(self) -> ProxyTransposed:  # pylint: disable=invalid-name
         return ProxyTransposed(self)
 
     def transpose(self) -> Matrix:
@@ -308,21 +309,20 @@ class ProxyTransposed(ProxyMatrix):
         return row + col * self.rows
 
     def __iadd__(self, other: MBase) -> MBase:
-        raise TypeError('Unsuported operation on %s', type(self).__name__)
+        raise TypeError('Unsuported operation on %s' % type(self).__name__)
 
     def __isub__(self, other: MBase) -> MBase:
-        raise TypeError('Unsuported operation on %s', type(self).__name__)
+        raise TypeError('Unsuported operation on %s' % type(self).__name__)
 
     def __imul__(self, other: MBase) -> MBase:
-        raise TypeError('Unsuported operation on %s', type(self).__name__)
+        raise TypeError('Unsuported operation on %s' % type(self).__name__)
 
     @property
-    def t(self) -> MBase:
+    def t(self) -> MBase:  # pylint: disable=invalid-name
         return self.matrix
 
     def transpose(self) -> MBase:
         return self.t * 1
 
 
-MBase = Number = None
 del Number, MBase
