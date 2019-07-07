@@ -1,11 +1,12 @@
 import math
 
-from typing import List, Union, Callable
+from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
 from matrix import Matrix
 
 
 Number = Union[int, float]
+MBase = TypeVar('MBase', bound='MatrixBase')
 
 
 class ActivationFunction:
@@ -21,6 +22,9 @@ class ActivationFunction:
 
     def dfunc(self, val: Number, *args):
         return self._dfunc(val)
+
+    def __call__(self, val: Number, *args):
+        return self._func(val)
 
 
 ACTIVATIONS_FUNCTIONS = {
@@ -66,33 +70,41 @@ class MLP:
 
         for weights, bias in zip(self.layers_weights, self.layers_bias):
             weights.randomize(*args)
-            bias.randomizr(*args)
+            bias.randomize(*args)
+
+    def compute_layer(self, input_matrix: MBase, weights: MBase, bias, last_layer: bool):
+        # | w11 w21 wb1 | * | i1 |
+        # | w12 w22 wb2 |   | i2 |
+        #                   |  1 |
+
+        # | w11*i1 + w21*i2 + wb1*1 |
+        # | w12*i1 + w22*i2 + wb2*1 |
+
+        # Same as:
+
+        # | w11 w21 | * | i1 | + | wb1 |
+        # | w12 w22 |   | i2 |   | wb2 |
+
+        # | w11*i1 + w21*i2 | + | wb1 | = | w11*i1 + w21*i2 + wb1 |
+        # | w12*i1 + w22*i2 |   | wb2 |   | w12*i1 + w22*i2 + wb2 |
+        matrix = weights * input_matrix
+        matrix += bias
+
+        if last_layer and not self.pure_linear_output:
+            matrix.map(self.activation_function)
+
+        return matrix
+
+    def walk_layers(self) -> Iterable[Tuple[MBase, MBase, int, bool]]:
+        last_layer_index = len(self.layers_weights) - 1
+
+        for index, (weights, bias) in enumerate(zip(self.layers_weights, self.layers_bias)):
+            yield weights, bias, index, index == last_layer_index
 
     def predict(self, input_array: List[Number]) -> List[Number]:
         matrix = Matrix.from_array(self.n_inputs, 1, input_array)
 
-        last_layer_index = len(self.layers_weights) - 1
-
-        for index, (weights, bias) in enumerate(zip(self.layers_weights, self.layers_bias)):
-            # | w11 w21 wb1 | * | i1 |
-            # | w12 w22 wb2 |   | i2 |
-            #                   |  1 |
-
-            # | w11*i1 + w21*i2 + wb1*1 |
-            # | w12*i1 + w22*i2 + wb2*1 |
-
-            # Same as:
-
-            # | w11 w21 | * | i1 | + | wb1 |
-            # | w12 w22 |   | i2 |   | wb2 |
-
-            # | w11*i1 + w21*i2 | + | wb1 | = | w11*i1 + w21*i2 + wb1 |
-            # | w12*i1 + w22*i2 |   | wb2 |   | w12*i1 + w22*i2 + wb2 |
-
-            matrix = weights * matrix
-            matrix += bias
-
-            if index == last_layer_index and not self.pure_linear_output:
-                matrix.map(self.activation_function.func)
+        for weights, bias, index, is_last_layer in self.walk_layers():
+            matrix = self.compute_layer(matrix, weights, bias, is_last_layer)
 
         return list(matrix)
