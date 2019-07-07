@@ -97,7 +97,7 @@ class MatrixBase:
             print()
 
     def _operate_new(self,
-                     other: MBase,
+                     other: Union[MBase, Number],
                      fn_matrix: Callable[[Number, int, int], Number],
                      fn_scalar: Callable[[Number, int, int], Number]) -> MBase:
 
@@ -119,7 +119,7 @@ class MatrixBase:
         raise _unexpected(other)
 
     def _operate_inplace(self,
-                         other: MBase,
+                         other: Union[MBase, Number],
                          fn_matrix: Callable[[Number, int, int], Number],
                          fn_scalar: Callable[[Number, int, int], Number]) -> MBase:
 
@@ -140,45 +140,45 @@ class MatrixBase:
         for i, _ in enumerate(self.data):
             self.data[i] = rand()
 
-    def __add__(self, other: MBase) -> MBase:
+    def __add__(self, other: Union[MBase, Number]) -> MBase:
         return self._operate_new(
             other,
             lambda val, i, j: self.get(i, j) + other.get(i, j),
             lambda val, i, j: self.get(i, j) + other,
         )
 
-    def __iadd__(self, other: MBase) -> MBase:
+    def __iadd__(self, other: Union[MBase, Number]) -> MBase:
         return self._operate_inplace(
             other,
             lambda val, i, j: val + other.get(i, j),
             lambda val, i, j: val + other,
         )
 
-    def __radd__(self, other: MBase) -> MBase:
+    def __radd__(self, other: Union[MBase, Number]) -> MBase:
         return self + other
 
-    def __sub__(self, other: MBase) -> MBase:
+    def __sub__(self, other: Union[MBase, Number]) -> MBase:
         return self._operate_new(
             other,
             lambda val, i, j: self.get(i, j) - other.get(i, j),
             lambda val, i, j: self.get(i, j) - other,
         )
 
-    def __isub__(self, other: MBase) -> MBase:
+    def __isub__(self, other: Union[MBase, Number]) -> MBase:
         return self._operate_inplace(
             other,
             lambda val, i, j: val - other.get(i, j),
             lambda val, i, j: val - other,
         )
 
-    def __rsub__(self, other: MBase) -> MBase:
+    def __rsub__(self, other: Union[MBase, Number]) -> MBase:
         return self._operate_new(
             other,
             lambda val, i, j: other.get(i, j) - self.get(i, j),
             lambda val, i, j: other - self.get(i, j)
         )
 
-    def __mul__(self, other: MBase) -> MBase:
+    def __mul__(self, other: Union[MBase, Number]) -> MBase:
         if isinstance(other, MatrixBase):
             if not self.cols == other.rows:
                 raise ValueError(
@@ -211,7 +211,7 @@ class MatrixBase:
 
         raise _unexpected(other)
 
-    def __imul__(self, other: MBase) -> MBase:
+    def __imul__(self, other: Union[MBase, Number]) -> MBase:
         if isinstance(other, numbers.Number):
             return self._operate_inplace(
                 other,
@@ -220,7 +220,7 @@ class MatrixBase:
             )
         raise ValueError('Can not do inplace Matrix multiplication')
 
-    def __rmul__(self, other: MBase) -> MBase:
+    def __rmul__(self, other: Union[MBase, Number]) -> MBase:
         return self * other
 
     def __getitem__(self, row: int) -> Row:
@@ -308,13 +308,13 @@ class ProxyTransposed(ProxyMatrix):
     def dt_idx(self, row: int, col: int) -> int:
         return row + col * self.rows
 
-    def __iadd__(self, other: MBase) -> MBase:
+    def __iadd__(self, other: Union[MBase, Number]) -> MBase:
         raise TypeError('Unsuported operation on %s' % type(self).__name__)
 
-    def __isub__(self, other: MBase) -> MBase:
+    def __isub__(self, other: Union[MBase, Number]) -> MBase:
         raise TypeError('Unsuported operation on %s' % type(self).__name__)
 
-    def __imul__(self, other: MBase) -> MBase:
+    def __imul__(self, other: Union[MBase, Number]) -> MBase:
         raise TypeError('Unsuported operation on %s' % type(self).__name__)
 
     @property
