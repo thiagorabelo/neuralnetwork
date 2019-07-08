@@ -1,5 +1,6 @@
 import math
 
+from functools import reduce
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
 from matrix import Matrix
@@ -27,15 +28,34 @@ class ActivationFunction:
         return self._func(val)
 
 
+def _sigmoid(val):
+    return 1.0 / (1.0 + math.exp(val))
+
+
+def _dsigmoid(val):
+    sig = _sigmoid(val)
+    return sig * (1.0 - sig)
+
+
+def _dtanh(val):
+    tanh = math.tanh(val)
+    return 1.0 - math.pow(tanh, 2.0)
+
+
 ACTIVATIONS_FUNCTIONS = {
     'sigmoid': ActivationFunction(
-        lambda val: 1.0 / (1.0 + math.exp(val)),
-        lambda val: val * (1.0 - val)
+        _sigmoid,
+        _dsigmoid
     ),
 
     'tanh': ActivationFunction(
         math.tanh,
-        lambda val: 1 - (val * val)
+        _dtanh
+    ),
+
+    'linear': ActivationFunction(
+        lambda val: val,
+        lambda _: 1
     )
 }
 
@@ -108,3 +128,19 @@ class MLP:
             matrix = self.compute_layer(matrix, weights, bias, is_last_layer)
 
         return list(matrix)
+
+
+class Supervisor:
+
+    def __init__(self, mlp: MLP):
+        self.mlp = mlp
+
+    def train(self, input_array: List[Number], target_array: List[Number]) -> None:
+        target = Matrix.from_array(len(target_array), 1, target_array)
+
+        matrix = Matrix.from_array(self.mlp.n_inputs, 1, input_array)
+        for weights, bias, index, is_last_layer in self.mlp.walk_layers():
+            matrix = self.mlp.compute_layer(matrix, weights, bias, is_last_layer)
+
+        error = matrix - target
+        inst_average_error = reduce(lambda val: math.pow(val, 2.0), error.data, 0.0) * 0.5
