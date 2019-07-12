@@ -51,7 +51,7 @@ def _unexpected(other: Matrix) -> ValueError:
 def _get_type(obj: MBase) -> Type[Matrix]:
     if isinstance(obj, ProxyMatrix):
         return type(obj.matrix)
-    elif isinstance(obj, MatrixBase):
+    if isinstance(obj, MatrixBase):
         return type(obj)
 
     raise _unexpected(obj)
@@ -177,6 +177,22 @@ class MatrixBase:
             lambda val, i, j: other.get(i, j) - self.get(i, j),
             lambda val, i, j: other - self.get(i, j)
         )
+
+    def __neg__(self):
+        return -1 * self
+
+    def __pos__(self):
+        return 1 * self
+
+    def __abs__(self):
+        copy = 1 * self
+        copy.map(lambda val, row, col: abs(val))
+        return copy
+
+    def __invert__(self):
+        copy = 1 * self
+        copy.map(lambda val, row, col: ~val)
+        return copy
 
     def __mul__(self, other: Union[MBase, Number]) -> MBase:
         if isinstance(other, MatrixBase):

@@ -136,6 +136,9 @@ class Supervisor:
         self.mlp = mlp
 
     def train(self, input_array: List[Number], target_array: List[Number]) -> None:
+        # Δ/δ	Delta/delta
+        # Φ/φ	Phi/phi
+
         target = Matrix.from_array(len(target_array), 1, target_array)
 
         matrix = Matrix.from_array(self.mlp.n_inputs, 1, input_array)
@@ -144,3 +147,9 @@ class Supervisor:
 
         error = matrix - target
         inst_average_error = reduce(lambda val: math.pow(val, 2.0), error.data, 0.0) * 0.5
+
+        # TODO: Calc Global Average Error
+
+        # δ = delta
+        # Δ = deltaw
+        # φ = phi
