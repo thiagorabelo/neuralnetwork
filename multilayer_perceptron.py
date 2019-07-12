@@ -150,6 +150,6 @@ class Supervisor:
 
         # TODO: Calc Global Average Error
 
-        # δ = delta
-        # Δ = deltaw
+        # δ = local_gradient
+        # Δ = delta
         # φ = phi
