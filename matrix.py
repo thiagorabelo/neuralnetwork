@@ -84,11 +84,16 @@ class MatrixBase:
     def dt_idx(self, row: int, col: int) -> int:
         return col + row * self.cols
 
-    def map(self, func: Callable[[Number, int, int], Number]) -> None:
+    def imap(self, func: Callable[[Number, int, int], Number]) -> None:
         for i, j in self.indexes:
             idx = self.dt_idx(i, j)
             val = self.data[idx]
             self.data[idx] = func(val, i, j)
+
+    def map(self, func: Callable[[Number, int, int], Number]) -> MBase:
+        new_copy = 1 * self
+        new_copy.imap(func)
+        return new_copy
 
     def print(self) -> None:
         for i in range(self.rows):
@@ -107,13 +112,13 @@ class MatrixBase:
 
             cls = _get_type(other)
             new_matrix = cls(other.rows, other.cols)
-            new_matrix.map(fn_matrix)
+            new_matrix.imap(fn_matrix)
             return new_matrix
 
         if isinstance(other, numbers.Number):
             cls = _get_type(self)
             new_matrix = cls(self.rows, self.cols)
-            new_matrix.map(fn_scalar)
+            new_matrix.imap(fn_scalar)
             return new_matrix
 
         raise _unexpected(other)
@@ -127,11 +132,11 @@ class MatrixBase:
             if not _match(self, other):
                 raise _doest_match(self, other)
 
-            self.map(fn_matrix)
+            self.imap(fn_matrix)
             return self
 
         if isinstance(other, numbers.Number):
-            self.map(fn_scalar)
+            self.imap(fn_scalar)
             return self
 
         raise _unexpected(other)
@@ -186,12 +191,12 @@ class MatrixBase:
 
     def __abs__(self):
         copy = 1 * self
-        copy.map(lambda val, row, col: abs(val))
+        copy.imap(lambda val, row, col: abs(val))
         return copy
 
     def __invert__(self):
         copy = 1 * self
-        copy.map(lambda val, row, col: ~val)
+        copy.imap(lambda val, row, col: ~val)
         return copy
 
     def __mul__(self, other: Union[MBase, Number]) -> MBase:
@@ -273,7 +278,7 @@ class Matrix(MatrixBase):
 
         if rows * cols == len(array):
             matrix = cls(rows, cols)
-            matrix.map(lambda val, i, j: array[matrix.dt_idx(i, j)])
+            matrix.imap(lambda val, i, j: array[matrix.dt_idx(i, j)])
             return matrix
 
         raise ValueError("Total of array elements must be %d (%d * %d) but given %d" % (
