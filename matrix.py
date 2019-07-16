@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numbers
 import random
-from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple
+from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple, Any
 
 
 Number = Union[int, float]
@@ -44,7 +44,7 @@ def _doest_match(mat1: Matrix, mat2: Matrix) -> ValueError:
     ))
 
 
-def _unexpected(other: Matrix) -> ValueError:
+def _unexpected(other: Any) -> ValueError:
     return ValueError('Unexpected parameter of type %s' % type(other).__name__)
 
 
@@ -59,7 +59,7 @@ def _get_type(obj: MBase) -> Type[Matrix]:
 
 class MatrixBase:
 
-    # You should define on derived class
+    # Should be defined in derived class
     data: List[Number] = None
     rows: int = None
     cols: int = None
@@ -199,7 +199,26 @@ class MatrixBase:
         copy.imap(lambda val, row, col: ~val)
         return copy
 
-    def __mul__(self, other: Union[MBase, Number]) -> MBase:
+    def __mul__(self, other: Number) -> MBase:
+        return self._operate_new(
+            other,
+            lambda val, i, j: self.get(i, j) * other.get(i, j),
+            lambda val, i, j: self.get(i, j) * other
+        )
+
+    def __imul__(self, other: Union[MBase, Number]) -> MBase:
+        if isinstance(other, numbers.Number):
+            return self._operate_inplace(
+                other,
+                None,
+                lambda val, i, j: val * other,
+            )
+        raise ValueError('Can not do inplace matrix multiplication. Only scalar inplace multiplications are allowed.')
+
+    def __rmul__(self, other: Union[MBase, Number]) -> MBase:
+        return self * other
+
+    def __matmul__(self, other: MBase) -> MBase:
         if isinstance(other, MatrixBase):
             if not self.cols == other.rows:
                 raise ValueError(
@@ -223,26 +242,13 @@ class MatrixBase:
 
             return new_matrix
 
-        if isinstance(other, numbers.Number):
-            return self._operate_new(
-                other,
-                None,
-                lambda val, i, j: self.get(i, j) * other
-            )
-
         raise _unexpected(other)
 
-    def __imul__(self, other: Union[MBase, Number]) -> MBase:
-        if isinstance(other, numbers.Number):
-            return self._operate_inplace(
-                other,
-                None,
-                lambda val, i, j: val * other,
-            )
-        raise ValueError('Can not do inplace Matrix multiplication')
+    def __rmatmul__(self, other: List[Number]):
+        return Matrix.from_array_cols(self.rows, other) @ self
 
-    def __rmul__(self, other: Union[MBase, Number]) -> MBase:
-        return self * other
+    def __imatmul__(self, other):
+        raise ValueError('Implement this?')
 
     def __getitem__(self, row: int) -> Row:
         return Row(self, row)
@@ -284,6 +290,16 @@ class Matrix(MatrixBase):
         raise ValueError("Total of array elements must be %d (%d * %d) but given %d" % (
             rows * cols, rows, cols, len(array)
         ))
+
+    @classmethod
+    def from_array_rows(cls, rows: int, array: List[Number]) -> Matrix:
+        cols: int = len(array) // rows
+        return Matrix.from_array(rows, cols, array)
+
+    @classmethod
+    def from_array_cols(cls, cols: int, array: List[Number]) -> Matrix:
+        rows: int = len(array) // cols
+        return Matrix.from_array(rows, cols, array)
 
     @property
     def t(self) -> ProxyTransposed:  # pylint: disable=invalid-name

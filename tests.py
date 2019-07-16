@@ -100,23 +100,28 @@ class TestMatrix(unittest.TestCase):  # pylint: disable=too-many-instance-attrib
         self.assertRaises(ValueError, raise2)
 
     def test_mul(self) -> None:
-        self.assertListEqual(list(self.m1 * self.m2), self.mul_m1_m2)
+        self.assertListEqual(list(self.m1 @ self.m2), self.mul_m1_m2)
+        self.assertListEqual(list(self.arr_1 @ self.m2), self.mul_m1_m2)
+        self.assertListEqual(list(self.m1 * self.m1), list(map(lambda i: i * i, self.arr_1)))
+
         self.assertListEqual(list(self.m1 * 2), list(map(lambda i: i * 2, self.arr_1)))
         self.assertListEqual(list(2 * self.m1), list(map(lambda i: i * 2, self.arr_1)))
 
         mat1 = Matrix.from_array(1, 2, [1, 2])
         mat2 = Matrix.from_array(2, 2, [2, 5, 6, 7])
         mult = [14, 19]
-        self.assertListEqual(list(mat1 * mat2), mult)
+        self.assertListEqual(list(mat1 @ mat2), mult)
         self.assertRaises(ValueError, lambda: mat1.t * mat2.t)
-        self.assertListEqual(list(mat2.t * mat1.t), mult)
+        self.assertListEqual(list(mat2.t @ mat1.t), mult)
+
+        self.assertRaises(ValueError, lambda: self.m1 * self.m2)
 
         def raise1():
-            return self.m1 * Matrix.from_array(2, 3, self.transp_2)
+            return self.m1 @ Matrix.from_array(2, 3, self.transp_2)
 
         def raise2():
             m = Matrix.from_array(3, 3, self.m1)
-            m *= self.m2
+            m @= self.m2
             return m
 
         self.assertRaises(ValueError, raise1)
@@ -126,13 +131,13 @@ class TestMatrix(unittest.TestCase):  # pylint: disable=too-many-instance-attrib
         self.assertListEqual(list(self.m1.t), self.transp_1)
         self.assertListEqual(list(self.m1.t.t), self.arr_1)
         self.assertListEqual(list(self.m1.transpose()), self.transp_1)
-        self.assertListEqual(list(self.m1 * Matrix.from_array(2, 3, self.transp_2).t), self.mul_m1_m2)
+        self.assertListEqual(list(self.m1 @ Matrix.from_array(2, 3, self.transp_2).t), self.mul_m1_m2)
 
         t1 = Matrix.from_array(3, 3, self.transp_1)
         t2 = Matrix.from_array(2, 3, self.transp_2)
 
-        self.assertListEqual(list(t1.t * self.m2), self.mul_m1_m2)
-        self.assertListEqual(list(t1.t * t2.t), self.mul_m1_m2)
+        self.assertListEqual(list(t1.t @ self.m2), self.mul_m1_m2)
+        self.assertListEqual(list(t1.t @ t2.t), self.mul_m1_m2)
 
 
 if __name__ == '__main__':

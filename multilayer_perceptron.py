@@ -28,16 +28,16 @@ class ActivationFunction:
         return self._func(val)
 
 
-def _sigmoid(val):
+def _sigmoid(val: Number) -> Number:
     return 1.0 / (1.0 + math.exp(val))
 
 
-def _dsigmoid(val):
+def _dsigmoid(val: Number) -> Number:
     sig = _sigmoid(val)
     return sig * (1.0 - sig)
 
 
-def _dtanh(val):
+def _dtanh(val: Number) -> Number:
     tanh = math.tanh(val)
     return 1.0 - math.pow(tanh, 2.0)
 
@@ -107,7 +107,7 @@ class MLP:
 
         # | w11*i1 + w21*i2 | + | wb1 | = | w11*i1 + w21*i2 + wb1 |
         # | w12*i1 + w22*i2 |   | wb2 |   | w12*i1 + w22*i2 + wb2 |
-        matrix = weights * input_matrix
+        matrix = weights @ input_matrix
         matrix += bias
         return matrix
 
@@ -155,11 +155,11 @@ class Supervisor:
 
         for weights, bias, index, is_last_layer in self.mlp.walk_layers():
             matrix = self.mlp.linear_combination(matrix, weights, bias)
-            linear_combinations[index] = matrix * 1  # make a copy
+            linear_combinations[index] = matrix
             matrix = self.mlp.apply_activation_function(matrix, is_last_layer)
 
         error = matrix - target
-        inst_average_error = (error * error.t).get(0, 0) / 2.0
+        inst_average_error = (error @ error.t).get(0, 0) / 2.0
 
         # TODO: Calc Global Average Error
 
