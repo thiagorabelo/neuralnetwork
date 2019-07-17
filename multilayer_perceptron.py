@@ -1,6 +1,5 @@
 import math
 
-from functools import reduce
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
 from matrix import Matrix
@@ -138,54 +137,106 @@ class Supervisor:
 
     def __init__(self, mlp: MLP, learning_rate: float = None):
         self.mlp = mlp
+        self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
 
     def train(self, input_array: List[Number], target_array: List[Number]) -> None:
         # Δ/δ	Delta/delta
         # Φ/φ	Phi/phi
 
-        matrix = Matrix.from_array(self.mlp.n_inputs, 1, input_array)
-        target = Matrix.from_array(len(target_array), 1, target_array)
-
-        # Apesar de terem o mesmo tamanho, to usando um min(l1, l2)
-        # vi(n)
-        linear_combinations = [None] * min(len(self.mlp.layers_weights),
-                                           len(self.mlp.layers_bias))
-        # φ(vi(n))
-        phi_layers = [None] * len(linear_combinations)
-
-        for weights, bias, index, is_last_layer in self.mlp.walk_layers():
-            matrix = self.mlp.linear_combination(matrix, weights, bias)
-            linear_combinations[index] = matrix
-
-            matrix = self.mlp.apply_activation_function(matrix, is_last_layer)
-            phi_layers[index] = matrix
-
-        error = matrix - target
-        inst_average_error = (error @ error.t).get(0, 0) / 2.0
-
-        # TODO: Calc Global Average Error
-
         # δ = local_gradient
         # Δ = delta
         # φ = phi
 
-        gradients = [None] * len(linear_combinations)  # Criar a lista logo do tamanho correto
-        deltas = [None] * len(linear_combinations)
-        phi_layers = list(reversed(phi_layers))
+        matrix = Matrix.from_array(self.mlp.n_inputs, 1, input_array)
+        target = Matrix.from_array(len(target_array), 1, target_array)
 
-        for index, linear_combination in enumerate(reversed(linear_combinations)):
+        self.backpropagation.phi_layers[0] = matrix
+
+        for weights, bias, index, is_last_layer in self.mlp.walk_layers():
+            matrix = self.mlp.linear_combination(matrix, weights, bias)
+            self.backpropagation.linear_combinations[index] = matrix
+
+            matrix = self.mlp.apply_activation_function(matrix, is_last_layer)
+            if not is_last_layer:
+                self.backpropagation.phi_layers[index + 1] = matrix
+
+        error = target - matrix
+        inst_average_error = (error @ error.t).get(0, 0) / 2.0
+
+        # TODO: Calc Global Average Error
+
+        linear_combinations = reversed(self.backpropagation.linear_combinations)
+        phi_layers = list(reversed(self.backpropagation.phi_layers))
+        layers_weights = list(reversed(self.mlp.layers_weights))
+        layers_bias = list(reversed(self.mlp.layers_bias))
+
+        # Backpropagation
+        for index, linear_combination in enumerate(linear_combinations):
             if not index == 0:
-                break
+                derived = linear_combination.map(self.mlp.activation_function.dfunc)
+                mult_gradients_weights = layers_weights[index - 1].t @ self.backpropagation.gradients[index - 1]
+                self.backpropagation.gradients[index] = derived * mult_gradients_weights
+                self.backpropagation.deltas_w[index] = -self.learning_rate * (self.backpropagation.gradients[index]
+                                                                              @ phi_layers[index].t)
+                self.backpropagation.deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
             else:
                 derived = linear_combination.map(self.mlp.activation_function.dfunc)
-                gradients[index] = -error * derived
-                deltas[index] = -self.learning_rate * (gradients[index] @ phi_layers[index+1].t)
-                # deltas[index].print()
+                self.backpropagation.gradients[index] = -error * derived
+                self.backpropagation.deltas_w[index] = -self.learning_rate * (self.backpropagation.gradients[index]
+                                                                              @ phi_layers[index].t)
+                self.backpropagation.deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
+
+        # Weights corrections
+        for index, (deltas, deltas_b) in enumerate(zip(reversed(self.backpropagation.deltas_w),
+                                                       reversed(self.backpropagation.deltas_b))):
+            self.mlp.layers_weights[index] += deltas
+            self.mlp.layers_bias[index] += deltas_b
+
+
+class BackpropagationHelper:
+
+    def __init__(self, supervisor: Supervisor):
+        self.supervisor = supervisor
+
+        # vi(n)
+        self.linear_combinations: List[MBase] = [None] * min(len(self.supervisor.mlp.layers_weights),
+                                                             len(self.supervisor.mlp.layers_bias))
+        # φ(vi(n))
+        self.phi_layers: List[MBase] = [None] * len(self.linear_combinations)
+
+        # δi(n)
+        self.gradients: List[MBase] = [None] * len(self.linear_combinations)
+
+        # Δwi(n)
+        self.deltas_w: List[MBase] = [None] * len(self.linear_combinations)
+
+        # Δbi(n)
+        self.deltas_b: List[MBase] = [None] * len(self.linear_combinations)
 
 
 if __name__ == '__main__':
-    mlp = MLP(2, [3, 4, 2])
-    sup = Supervisor(mlp)
+    def main():
+        mlp = MLP(2, [2, 1])
+        sup = Supervisor(mlp)
 
-    sup.train([1, 1], [0, 0])
+        train_set = (
+            ([0, 0], [0]),
+            ([0, 1], [1]),
+            ([1, 0], [1]),
+            ([1, 1], [0]),
+        )
+
+        import random
+
+        for i in range(1000):
+            print(f'\n### {i}')
+            random_train_set = random.sample(train_set, len(train_set))
+            for input_array, target_array in random_train_set:
+                sup.train(input_array, target_array)
+
+            for input_array, target_array in train_set:
+                output = mlp.predict(input_array)
+                print(f"{input_array[0]} ^ {input_array[1]} = {output[0]}  {target_array[0]}")
+
+    main()
