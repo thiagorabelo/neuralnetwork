@@ -138,9 +138,7 @@ class Supervisor:
 
     def __init__(self, mlp: MLP, learning_rate: float = None):
         self.mlp = mlp
-
-        if learning_rate:
-            self.learning_rate = learning_rate
+        self.learning_rate = learning_rate or Supervisor.learning_rate
 
     def train(self, input_array: List[Number], target_array: List[Number]) -> None:
         # Δ/δ	Delta/delta
@@ -150,13 +148,18 @@ class Supervisor:
         target = Matrix.from_array(len(target_array), 1, target_array)
 
         # Apesar de terem o mesmo tamanho, to usando um min(l1, l2)
+        # vi(n)
         linear_combinations = [None] * min(len(self.mlp.layers_weights),
                                            len(self.mlp.layers_bias))
+        # φ(vi(n))
+        phi_layers = [None] * len(linear_combinations)
 
         for weights, bias, index, is_last_layer in self.mlp.walk_layers():
             matrix = self.mlp.linear_combination(matrix, weights, bias)
             linear_combinations[index] = matrix
+
             matrix = self.mlp.apply_activation_function(matrix, is_last_layer)
+            phi_layers[index] = matrix
 
         error = matrix - target
         inst_average_error = (error @ error.t).get(0, 0) / 2.0
@@ -169,14 +172,20 @@ class Supervisor:
 
         gradients = [None] * len(linear_combinations)  # Criar a lista logo do tamanho correto
         deltas = [None] * len(linear_combinations)
+        phi_layers = list(reversed(phi_layers))
 
         for index, linear_combination in enumerate(reversed(linear_combinations)):
             if not index == 0:
                 break
             else:
                 derived = linear_combination.map(self.mlp.activation_function.dfunc)
-                derived.print()
-                print('***')
-                # gradients[index] = -error DOT derived.t
-                # gradients[index].print()
-                # deltas[index] = gradients[index] dot error
+                gradients[index] = -error * derived
+                deltas[index] = -self.learning_rate * (gradients[index] @ phi_layers[index+1].t)
+                # deltas[index].print()
+
+
+if __name__ == '__main__':
+    mlp = MLP(2, [3, 4, 2])
+    sup = Supervisor(mlp)
+
+    sup.train([1, 1], [0, 0])
