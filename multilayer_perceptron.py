@@ -259,16 +259,23 @@ if __name__ == '__main__':
             ([1, 1], [0]),
         )
 
+        import time
         import random
 
-        for i in range(1000):
-            print(f'\n### {i}')
+        start_time = time.time()
+        for i in range(3000):
             random_train_set = random.sample(train_set, len(train_set))
             for input_array, target_array in random_train_set:
                 sup.train(input_array, target_array)
+                print(i)
+        end_time = time.time()
+        print('TEMPO GASTO = ' + str(end_time - start_time) + '\n')
 
-            for input_array, target_array in train_set:
-                output = mlp.predict(input_array)
-                print(f"{input_array[0]} ^ {input_array[1]} = {output[0]} :: {target_array[0]}")
+        # buffer = [f'\n### {i}'] + [''] * len(train_set)
+        buffer = [''] * len(train_set)
+        for idx, (input_array, target_array) in enumerate(train_set, 0):
+            output = mlp.predict(input_array)
+            buffer[idx] = f"{input_array[0]} ^ {input_array[1]} = {output[0]} :: {target_array[0]}"
+        print('\n'.join(buffer))
 
     xor_test()
