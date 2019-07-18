@@ -28,7 +28,7 @@ class ActivationFunction:
 
 
 def _sigmoid(val: Number) -> Number:
-    return 1.0 / (1.0 + math.exp(val))
+    return 1.0 / (1.0 + math.exp(-val))
 
 
 def _dsigmoid(val: Number) -> Number:
@@ -111,7 +111,7 @@ class MLP:
         return matrix
 
     def apply_activation_function(self, matrix: MBase, last_layer: bool) -> MBase:
-        if last_layer and not self.pure_linear_output:
+        if not last_layer or not self.pure_linear_output:
             matrix.imap(self.activation_function)
         return matrix
 
@@ -157,19 +157,17 @@ class Supervisor:
             matrix = self.mlp.linear_combination(matrix, weights, bias)
             self.backpropagation.linear_combinations[index] = matrix
 
-            matrix = self.mlp.apply_activation_function(matrix, is_last_layer)
+            matrix = self.mlp.apply_activation_function(matrix * 1, is_last_layer)
             if not is_last_layer:
                 self.backpropagation.phi_layers[index + 1] = matrix
 
         error = target - matrix
-        inst_average_error = (error @ error.t).get(0, 0) / 2.0
-
+        # inst_average_error = (error @ error.t).get(0, 0) / 2.0
         # TODO: Calc Global Average Error
 
         linear_combinations = reversed(self.backpropagation.linear_combinations)
         phi_layers = list(reversed(self.backpropagation.phi_layers))
         layers_weights = list(reversed(self.mlp.layers_weights))
-        layers_bias = list(reversed(self.mlp.layers_bias))
 
         # Backpropagation
         for index, linear_combination in enumerate(linear_combinations):
@@ -216,7 +214,41 @@ class BackpropagationHelper:
 
 
 if __name__ == '__main__':
-    def main():
+    def known_test():
+        mlp = MLP(2, [2, 1])
+        sup = Supervisor(mlp)
+
+        ws = [
+            # L1
+            0.8,   0.3,
+            -0.6, -0.4,
+
+            # b1
+            0.7,
+            -0.4,
+
+            # L2
+            0.7,
+            -0.8,
+
+            # b2
+            -0.3,
+        ]
+
+        ws_iter = iter(ws)
+
+        for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
+            weights.randomize(lambda: next(ws_iter))
+            bias.randomize(lambda: next(ws_iter))
+
+        for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
+            weights.print()
+            bias.print()
+            print('\n')
+
+        sup.train([1, 1], [0])
+
+    def xor_test():
         mlp = MLP(2, [2, 1])
         sup = Supervisor(mlp)
 
@@ -237,6 +269,6 @@ if __name__ == '__main__':
 
             for input_array, target_array in train_set:
                 output = mlp.predict(input_array)
-                print(f"{input_array[0]} ^ {input_array[1]} = {output[0]}  {target_array[0]}")
+                print(f"{input_array[0]} ^ {input_array[1]} = {output[0]} :: {target_array[0]}")
 
-    main()
+    xor_test()

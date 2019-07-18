@@ -96,10 +96,14 @@ class MatrixBase:
         return new_copy
 
     def print(self) -> None:
+        buff = [None] * self.rows
+        sep = ',\n '
+
         for i in range(self.rows):
-            for j in range(self.cols):
-                print(self.fmt(self.data[self.dt_idx(i, j)]), end=" ")
-            print()
+            row_buff = [self.fmt(self.data[self.dt_idx(i, j)]) for j in range(self.cols)]
+            buff[i] = f'[{", ".join(row_buff)}]'
+
+        print(f"[{sep.join(buff)}]")
 
     def _operate_new(self,
                      other: Union[MBase, Number],
