@@ -363,14 +363,14 @@ if __name__ == '__main__':
 
         sup.train_set(train_set, 0.005, 1000)
 
-        validation = tuple(
-            ([x], [func(x)])
-            for x in range(-7, 18)
-        )
+        # validation = tuple(
+        #     ([x], [func(x)])
+        #     for x in range(-7, 18)
+        # )
 
         plot(
-            [i[0][0] for i in validation], [i[1][0] for i in validation], 'b',
-            [i[0][0] for i in validation], [mlp.predict(i[0]) for i in validation], 'r'
+            [i[0][0] for i in train_set], [i[1][0] for i in train_set], 'b',
+            [i[0][0] for i in train_set], [mlp.predict(i[0]) for i in train_set], 'r'
         )
         show()
 
