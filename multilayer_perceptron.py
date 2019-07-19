@@ -54,7 +54,7 @@ ACTIVATIONS_FUNCTIONS = {
 
     'linear': ActivationFunction(
         lambda val: val,
-        lambda _: 1
+        lambda _: 1.0
     )
 }
 
@@ -62,6 +62,7 @@ ACTIVATIONS_FUNCTIONS = {
 class MLP:
 
     activation_function: ActivationFunction = ACTIVATIONS_FUNCTIONS['sigmoid']
+    linear_activation_function: ActivationFunction = ACTIVATIONS_FUNCTIONS['linear']
 
     def __init__(self, n_inputs: int, layers: List[int], pure_linear_output=False):
         self.n_inputs = n_inputs
@@ -140,6 +141,11 @@ class Supervisor:
         self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
 
+    def apply_derivative_function(self, matrix: MBase, pure_linear: bool = False):
+        if not pure_linear:
+            return matrix.map(self.mlp.activation_function.dfunc)
+        return matrix.map(self.mlp.linear_activation_function.dfunc)
+
     def train(self, input_array: List[Number], target_array: List[Number]) -> None:
         # Δ/δ	Delta/delta
         # Φ/φ	Phi/phi
@@ -172,15 +178,15 @@ class Supervisor:
         # Backpropagation
         for index, linear_combination in enumerate(linear_combinations):
             if not index == 0:
-                derived = linear_combination.map(self.mlp.activation_function.dfunc)
+                derivative = self.apply_derivative_function(linear_combination)
                 mult_gradients_weights = layers_weights[index - 1].t @ self.backpropagation.gradients[index - 1]
-                self.backpropagation.gradients[index] = derived * mult_gradients_weights
+                self.backpropagation.gradients[index] = derivative * mult_gradients_weights
                 self.backpropagation.deltas_w[index] = -self.learning_rate * (self.backpropagation.gradients[index]
                                                                               @ phi_layers[index].t)
                 self.backpropagation.deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
             else:
-                derived = linear_combination.map(self.mlp.activation_function.dfunc)
-                self.backpropagation.gradients[index] = -error * derived
+                derivative = self.apply_derivative_function(linear_combination, self.mlp.pure_linear_output)
+                self.backpropagation.gradients[index] = -error * derivative
                 self.backpropagation.deltas_w[index] = -self.learning_rate * (self.backpropagation.gradients[index]
                                                                               @ phi_layers[index].t)
                 self.backpropagation.deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
@@ -220,7 +226,7 @@ if __name__ == '__main__':
 
         ws = [
             # L1
-            0.8,   0.3,
+            0.8, 0.3,
             -0.6, -0.4,
 
             # b1
@@ -248,6 +254,7 @@ if __name__ == '__main__':
 
         sup.train([1, 1], [0])
 
+
     def xor_test():
         mlp = MLP(2, [2, 1])
         sup = Supervisor(mlp)
@@ -267,7 +274,7 @@ if __name__ == '__main__':
             random_train_set = random.sample(train_set, len(train_set))
             for input_array, target_array in random_train_set:
                 sup.train(input_array, target_array)
-                print(i)
+            print(i)
         end_time = time.time()
         print('TEMPO GASTO = ' + str(end_time - start_time) + '\n')
 
@@ -278,4 +285,35 @@ if __name__ == '__main__':
             buffer[idx] = f"{input_array[0]} ^ {input_array[1]} = {output[0]} :: {target_array[0]}"
         print('\n'.join(buffer))
 
-    xor_test()
+
+    def test_function():
+        def func(x):
+            return 2*math.pow(x, 3) - math.pow(x, 2) + 10*x - 4
+
+        train_set = tuple(
+            ([x], [func(x)])
+            for x in range(101)
+        )
+
+        import random
+        from pylab import plot, show
+
+        mlp = MLP(1, [1, 20, 1], True)
+        sup = Supervisor(mlp, 0.01)
+
+        for i in range(1000):
+            random_train_set = random.sample(train_set, len(train_set))
+            for input_array, target_array in random_train_set:
+                sup.train(input_array, target_array)
+            print(i)
+
+        for inp, out in train_set:
+            print(f'{inp[0]} -> {mlp.predict(inp)} | {out[0]}')
+
+        plot(
+            [i[0][0] for i in train_set], [i[1][0] for i in train_set], 'b',
+            [i[0][0] for i in train_set], [mlp.predict(i[0]) for i in train_set], 'r'
+        )
+        show()
+
+    test_function()
