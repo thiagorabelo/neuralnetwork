@@ -217,7 +217,8 @@ class MatrixBase:
                 None,
                 lambda val, i, j: val * other,
             )
-        raise ValueError('Can not do inplace matrix multiplication. Only scalar inplace multiplications are allowed.')
+        raise ValueError('Can not do inplace matrix multiplication. Only scalar inplace '
+                         'multiplications are allowed.')
 
     def __rmul__(self, other: Union[MBase, Number]) -> MBase:
         return self * other

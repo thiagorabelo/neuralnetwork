@@ -1,4 +1,5 @@
 import math
+import random
 
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
@@ -41,6 +42,14 @@ def _dtanh(val: Number) -> Number:
     return 1.0 - math.pow(tanh, 2.0)
 
 
+def _relu(val: Number) -> Number:
+    return max(0, val)
+
+
+def _drelu(val: Number) -> Number:
+    return 1.0 if val > 0.0 else 0.0
+
+
 ACTIVATIONS_FUNCTIONS = {
     'sigmoid': ActivationFunction(
         _sigmoid,
@@ -52,23 +61,46 @@ ACTIVATIONS_FUNCTIONS = {
         _dtanh
     ),
 
+    'relu': ActivationFunction(
+        _relu,
+        _drelu
+    ),
+
+    'sin': ActivationFunction(
+        math.sin,
+        math.cos
+    ),
+
     'linear': ActivationFunction(
         lambda val: val,
         lambda _: 1.0
+    ),
+
+    'custom': ActivationFunction(
+        lambda val: 0.5 * math.pow(val, 2.0) - 18,
+        lambda val: val
     )
 }
 
 
 class MLP:
 
-    activation_function: ActivationFunction = ACTIVATIONS_FUNCTIONS['sigmoid']
-    linear_activation_function: ActivationFunction = ACTIVATIONS_FUNCTIONS['linear']
+    def __init__(self,
+                 n_inputs: int,
+                 layers: List[int],
+                 activation_func: ActivationFunction,
+                 activation_func_output: ActivationFunction = None):
 
-    def __init__(self, n_inputs: int, layers: List[int], pure_linear_output=False):
         self.n_inputs = n_inputs
         self.layers_weights = []
         self.layers_bias = []
-        self.pure_linear_output = pure_linear_output
+
+        self.activation_function = activation_func
+
+        if activation_func_output:
+            self.activation_func_output = activation_func_output
+        else:
+            self.activation_func_output = self.activation_function
 
         weights_list = [self.n_inputs] + layers
 
@@ -76,8 +108,8 @@ class MLP:
             weights = Matrix(layer, weights_list[index - 1])
             bias = Matrix(layer, 1)
 
-            weights.randomize()
-            bias.randomize()
+            weights.randomize(lambda: random.uniform(-1.0, 1.0))
+            bias.randomize(lambda: random.uniform(-1.0, 1.0))
 
             self.layers_weights.append(weights)
             self.layers_bias.append(bias)
@@ -112,8 +144,11 @@ class MLP:
         return matrix
 
     def apply_activation_function(self, matrix: MBase, last_layer: bool) -> MBase:
-        if not last_layer or not self.pure_linear_output:
+        if not last_layer:
             matrix.imap(self.activation_function)
+        else:
+            matrix.imap(self.activation_func_output)
+
         return matrix
 
     def walk_layers(self) -> Iterable[Tuple[MBase, MBase, int, bool]]:
@@ -141,12 +176,7 @@ class Supervisor:
         self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
 
-    def apply_derivative_function(self, matrix: MBase, pure_linear: bool = False):
-        if not pure_linear:
-            return matrix.map(self.mlp.activation_function.dfunc)
-        return matrix.map(self.mlp.linear_activation_function.dfunc)
-
-    def train(self, input_array: List[Number], target_array: List[Number]) -> None:
+    def train(self, input_array: List[Number], target_array: List[Number]) -> Number:
         # Δ/δ	Delta/delta
         # Φ/φ	Phi/phi
 
@@ -168,7 +198,7 @@ class Supervisor:
                 self.backpropagation.phi_layers[index + 1] = matrix
 
         error = target - matrix
-        # inst_average_error = (error @ error.t).get(0, 0) / 2.0
+        inst_average_error = (error @ error.t).get(0, 0) / 2.0
         # TODO: Calc Global Average Error
 
         linear_combinations = reversed(self.backpropagation.linear_combinations)
@@ -178,24 +208,61 @@ class Supervisor:
         # Backpropagation
         for index, linear_combination in enumerate(linear_combinations):
             if not index == 0:
-                derivative = self.apply_derivative_function(linear_combination)
-                mult_gradients_weights = layers_weights[index - 1].t @ self.backpropagation.gradients[index - 1]
+                derivative = linear_combination.map(self.mlp.activation_function.dfunc)
+                mult_gradients_weights = (layers_weights[index - 1].t
+                                          @ self.backpropagation.gradients[index - 1])
+
                 self.backpropagation.gradients[index] = derivative * mult_gradients_weights
-                self.backpropagation.deltas_w[index] = -self.learning_rate * (self.backpropagation.gradients[index]
-                                                                              @ phi_layers[index].t)
-                self.backpropagation.deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
+
+                self.backpropagation.deltas_w[index] = (-self.learning_rate *
+                                                        (self.backpropagation.gradients[index]
+                                                         @ phi_layers[index].t))
+
+                self.backpropagation.deltas_b[index] = (-self.learning_rate
+                                                        * self.backpropagation.gradients[index])
             else:
-                derivative = self.apply_derivative_function(linear_combination, self.mlp.pure_linear_output)
+                derivative = linear_combination.map(self.mlp.activation_func_output.dfunc)
                 self.backpropagation.gradients[index] = -error * derivative
-                self.backpropagation.deltas_w[index] = -self.learning_rate * (self.backpropagation.gradients[index]
-                                                                              @ phi_layers[index].t)
-                self.backpropagation.deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
+
+                self.backpropagation.deltas_w[index] = (-self.learning_rate *
+                                                        (self.backpropagation.gradients[index]
+                                                         @ phi_layers[index].t))
+
+                self.backpropagation.deltas_b[index] = (-self.learning_rate
+                                                        * self.backpropagation.gradients[index])
 
         # Weights corrections
         for index, (deltas, deltas_b) in enumerate(zip(reversed(self.backpropagation.deltas_w),
                                                        reversed(self.backpropagation.deltas_b))):
             self.mlp.layers_weights[index] += deltas
             self.mlp.layers_bias[index] += deltas_b
+
+        return inst_average_error
+
+    def train_set(self,
+                  train_set: List[Tuple[Number, Number]],
+                  min_error: float,
+                  max_epochs: int):
+        average_global_error = 0.0
+        train_set_size = len(train_set)
+
+        for epoch in range(1, max_epochs+1):
+            random_train_set = random.sample(train_set, len(train_set))
+
+            for iteration, (input_array, target_array) in enumerate(random_train_set, 1):
+                try:
+                    inst_average_error = self.train(input_array, target_array)
+                except:
+                    print(f"ERROR ON: Epoch={epoch}, Iteration={iteration}")
+                    raise
+                average_global_error += inst_average_error
+
+            average_global_error /= train_set_size
+
+            print(f'AvgGlobalError={round(average_global_error, 15)} - Epoch={epoch}')
+
+            if average_global_error <= min_error:
+                break
 
 
 class BackpropagationHelper:
@@ -266,19 +333,8 @@ if __name__ == '__main__':
             ([1, 1], [0]),
         )
 
-        import time
-        import random
+        sup.train_set(train_set, 0.05, 10000)
 
-        start_time = time.time()
-        for i in range(3000):
-            random_train_set = random.sample(train_set, len(train_set))
-            for input_array, target_array in random_train_set:
-                sup.train(input_array, target_array)
-            print(i)
-        end_time = time.time()
-        print('TEMPO GASTO = ' + str(end_time - start_time) + '\n')
-
-        # buffer = [f'\n### {i}'] + [''] * len(train_set)
         buffer = [''] * len(train_set)
         for idx, (input_array, target_array) in enumerate(train_set, 0):
             output = mlp.predict(input_array)
@@ -288,31 +344,33 @@ if __name__ == '__main__':
 
     def test_function():
         def func(x):
-            return 2*math.pow(x, 3) - math.pow(x, 2) + 10*x - 4
+            return math.pow(x, 2.0) - 10.0*x + 21
 
+        # Variando do x' até x'' (3 -> 4), dividido em 100 partes
         train_set = tuple(
-            ([x], [func(x)])
-            for x in range(101)
+            ([3.0 + i*(4.0/20.0)], [func(3.0 + i*(4.0/20.0))])
+            for i in range(21)
         )
 
         import random
         from pylab import plot, show
 
-        mlp = MLP(1, [1, 20, 1], True)
+        mlp = MLP(1, [20, 20, 10, 1],
+                  ACTIVATIONS_FUNCTIONS['sigmoid'],
+                  ACTIVATIONS_FUNCTIONS['linear'])
+
         sup = Supervisor(mlp, 0.01)
 
-        for i in range(1000):
-            random_train_set = random.sample(train_set, len(train_set))
-            for input_array, target_array in random_train_set:
-                sup.train(input_array, target_array)
-            print(i)
+        sup.train_set(train_set, 0.005, 1000)
 
-        for inp, out in train_set:
-            print(f'{inp[0]} -> {mlp.predict(inp)} | {out[0]}')
+        validation = tuple(
+            ([x], [func(x)])
+            for x in range(-7, 18)
+        )
 
         plot(
-            [i[0][0] for i in train_set], [i[1][0] for i in train_set], 'b',
-            [i[0][0] for i in train_set], [mlp.predict(i[0]) for i in train_set], 'r'
+            [i[0][0] for i in validation], [i[1][0] for i in validation], 'b',
+            [i[0][0] for i in validation], [mlp.predict(i[0]) for i in validation], 'r'
         )
         show()
 
