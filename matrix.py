@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import numbers
 import random
 from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple, Any
@@ -74,9 +75,8 @@ class MatrixBase:
 
     @property
     def indexes(self) -> Iterable[Tuple[int, int]]:
-        return ((row, col)
-                for row in range(self.rows)
-                for col in range(self.cols))
+        return itertools.product(range(self.rows),
+                                 range(self.cols))
 
     def __len__(self) -> int:
         return self.array_length
@@ -145,7 +145,7 @@ class MatrixBase:
 
         raise _unexpected(other)
 
-    def randomize(self, rand: Callable[[], Number] = lambda: random.uniform(-1, 1)) -> None:
+    def randomize(self, rand: Callable[[], Number] = lambda: random.uniform(-1.0, 1.0)) -> None:
         for i, _ in enumerate(self.data):
             self.data[i] = rand()
 
