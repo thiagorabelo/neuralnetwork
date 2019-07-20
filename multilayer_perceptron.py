@@ -207,8 +207,7 @@ class Supervisor:
             matrix = self.mlp.linear_combination(matrix, weights, bias)
             self.backpropagation.linear_combinations[index] = matrix
 
-            matrix = self.mlp.apply_activation_function(
-                matrix * 1, is_last_layer)
+            matrix = self.mlp.apply_activation_function(matrix.copy(), is_last_layer)
             if not is_last_layer:
                 self.backpropagation.phi_layers[index + 1] = matrix
 
