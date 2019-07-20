@@ -1,6 +1,7 @@
 import math
 import random
 
+from functools import wraps
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
 from matrix import Matrix
@@ -28,6 +29,19 @@ class ActivationFunction:
         return self._func(val)
 
 
+def clip(min_val: Number, max_val: Number) -> \
+        Callable[[Number, Number], Callable[[Number], Number]]:
+    def decorator(func: Callable[[Number], Number]) -> Callable[[Number], Number]:
+        @wraps(func)
+        def wrapper(value: Number) -> Number:
+            return func(min_val if value < min_val else
+                        max_val if value > max_val else
+                        value)
+        return wrapper
+    return decorator
+
+
+@clip(-700, 700)
 def _sigmoid(val: Number) -> Number:
     return 1.0 / (1.0 + math.exp(-val))
 
@@ -193,7 +207,8 @@ class Supervisor:
             matrix = self.mlp.linear_combination(matrix, weights, bias)
             self.backpropagation.linear_combinations[index] = matrix
 
-            matrix = self.mlp.apply_activation_function(matrix * 1, is_last_layer)
+            matrix = self.mlp.apply_activation_function(
+                matrix * 1, is_last_layer)
             if not is_last_layer:
                 self.backpropagation.phi_layers[index + 1] = matrix
 
@@ -201,18 +216,21 @@ class Supervisor:
         inst_average_error = (error @ error.t).get(0, 0) / 2.0
         # TODO: Calc Global Average Error
 
-        linear_combinations = reversed(self.backpropagation.linear_combinations)
+        linear_combinations = reversed(
+            self.backpropagation.linear_combinations)
         phi_layers = list(reversed(self.backpropagation.phi_layers))
         layers_weights = list(reversed(self.mlp.layers_weights))
 
         # Backpropagation
         for index, linear_combination in enumerate(linear_combinations):
             if not index == 0:
-                derivative = linear_combination.map(self.mlp.activation_function.dfunc)
+                derivative = linear_combination.map(
+                    self.mlp.activation_function.dfunc)
                 mult_gradients_weights = (layers_weights[index - 1].t
                                           @ self.backpropagation.gradients[index - 1])
 
-                self.backpropagation.gradients[index] = derivative * mult_gradients_weights
+                self.backpropagation.gradients[index] = derivative * \
+                    mult_gradients_weights
 
                 self.backpropagation.deltas_w[index] = (-self.learning_rate *
                                                         (self.backpropagation.gradients[index]
@@ -221,7 +239,8 @@ class Supervisor:
                 self.backpropagation.deltas_b[index] = (-self.learning_rate
                                                         * self.backpropagation.gradients[index])
             else:
-                derivative = linear_combination.map(self.mlp.activation_func_output.dfunc)
+                derivative = linear_combination.map(
+                    self.mlp.activation_func_output.dfunc)
                 self.backpropagation.gradients[index] = -error * derivative
 
                 self.backpropagation.deltas_w[index] = (-self.learning_rate *
@@ -259,7 +278,8 @@ class Supervisor:
 
             average_global_error /= train_set_size
 
-            print(f'AvgGlobalError={round(average_global_error, 15)} - Epoch={epoch}')
+            print(
+                f'AvgGlobalError={round(average_global_error, 15)} - Epoch={epoch}')
 
             if average_global_error <= min_error:
                 break
@@ -284,6 +304,28 @@ class BackpropagationHelper:
 
         # Δbi(n)
         self.deltas_b: List[MBase] = [None] * len(self.linear_combinations)
+
+
+def arange(start, stop=None, step=1.0):
+    if not step:
+        raise ValueError('step can not be None or 0')
+
+    if stop == None and start > 0.0:
+        start, stop = 0.0, start
+    elif stop == None and start < 0.0 and step > 0.0:
+        step *= -1
+        start, stop = 0.0, start
+    elif start > stop and step > 0.0:
+        step *= -1
+
+    if start < stop:
+        while start < stop:
+            yield start
+            start += step
+    else:
+        while start > stop:
+            yield start
+            start += step
 
 
 if __name__ == '__main__':
@@ -321,7 +363,6 @@ if __name__ == '__main__':
 
         sup.train([1, 1], [0])
 
-
     def xor_test():
         mlp = MLP(2, [2, 1])
         sup = Supervisor(mlp)
@@ -341,31 +382,46 @@ if __name__ == '__main__':
             buffer[idx] = f"{input_array[0]} ^ {input_array[1]} = {output[0]} :: {target_array[0]}"
         print('\n'.join(buffer))
 
-
     def test_function():
-        def func(x):
-            return math.pow(x, 2.0) - 10.0*x + 21
+        # def func(x):
+        #     return math.pow(x, 2.0) - 10.0*x + 21
 
         # Variando do x' até x'' (3 -> 4), dividido em 100 partes
+        # train_set = tuple(
+        #     ([3.0 + i*(4.0/20.0)], [func(3.0 + i*(4.0/20.0))])
+        #     for i in range(21)
+        # )
+
+        # https://www.mathworks.com/help/deeplearning/ug/improve-neural-network-generalization-and-avoid-overfitting.html;jsessionid=d7ccdb5dad86ecd28c93a845c8c8
+        def func(x):
+            return 2*math.pow(x, 3) - math.pow(x, 2) + 10*x - 4
+
         train_set = tuple(
-            ([3.0 + i*(4.0/20.0)], [func(3.0 + i*(4.0/20.0))])
-            for i in range(21)
+            ([i], [func(i)])
+            for i in arange(-2.0, 2.0, 0.1)
         )
 
         import random
         from pylab import plot, show
 
-        mlp = MLP(1, [20, 20, 10, 1],
+        mlp = MLP(1, [10, 20, 1],
                   ACTIVATIONS_FUNCTIONS['sigmoid'],
                   ACTIVATIONS_FUNCTIONS['linear'])
 
+        mlp.randomise_weights(lambda: random.uniform(-1.0, 1.0))
+
         sup = Supervisor(mlp, 0.01)
 
-        sup.train_set(train_set, 0.005, 1000)
+        sup.train_set(train_set, 0.05, 1000)
 
         # validation = tuple(
         #     ([x], [func(x)])
         #     for x in range(-7, 18)
+        # )
+
+        # validation = tuple(
+        #     ([x], [func(x)])
+        #     for x in range(-10, 10)
         # )
 
         plot(
