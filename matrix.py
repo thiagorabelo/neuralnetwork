@@ -35,49 +35,29 @@ class MatrixBase(abc.ABC):
     def __init__(self, fmt: Callable[[Number], Text] = None) -> None:
         self.fmt = fmt or str
 
-    @property
-    def array_length(self) -> int:
-        return self.rows * self.cols
-
-    @property
-    def indexes(self) -> Iterable[Tuple[int, int]]:
-        return itertools.product(range(self.rows),
-                                 range(self.cols))
-
-    def __len__(self) -> int:
-        return self.array_length
-
     def __str__(self):
+        return self._to_str()
+
+    def __repr__(self):
+        return self._to_str(f'Matrix({self.rows}, {self.cols}, ', ')')
+
+    def print(self) -> None:
+        print(str(self))
+
+    def _to_str(self, prefix='', suffix=''):
         cols = [list(Col(self, col)) for col in range(self.cols)]
         cols_fmt = [[self.fmt(elem) for elem in col] for col in cols]
         max_cols = [max(len(c) for c in col) for col in cols_fmt]
         buff = [None] * self.rows
-        sep = ',\n '
-        cols = None
+        sep = f',\n{" " * len(prefix)} '
+        del cols
 
         for i in range(self.rows):
             row_buff = [cols_fmt[j][i].rjust(max_cols[j], ' ')
                         for j in range(self.cols)]
-            buff[i] = f'[{", ".join(row_buff)}]'
+            buff[i] = ", ".join(row_buff)
 
-        return f"[{sep.join(buff)}]"
-
-    def dt_idx(self, row: int, col: int) -> int:
-        return col + row * self.cols
-
-    def imap(self, func: Callable[[Number, int, int], Number]) -> None:
-        for i, j in self.indexes:
-            idx = self.dt_idx(i, j)
-            val = self.data[idx]
-            self.data[idx] = func(val, i, j)
-
-    def map(self, func: Callable[[Number, int, int], Number]) -> MBase:
-        new_copy = self.copy()
-        new_copy.imap(func)
-        return new_copy
-
-    def print(self) -> None:
-        print(str(self))
+        return f"{prefix}[{sep.join(buff)}]{suffix}"
 
     def _apply_op(self,
                   other: Union[MBase, Number],
@@ -101,9 +81,35 @@ class MatrixBase(abc.ABC):
         if isinstance(other, numbers.Number):
             return util.iscalar_op(self, other, operation)
 
+    def dt_idx(self, row: int, col: int) -> int:
+        return col + row * self.cols
+
+    def imap(self, func: Callable[[Number, int, int], Number]) -> None:
+        for i, j in self.indexes:
+            idx = self.dt_idx(i, j)
+            val = self.data[idx]
+            self.data[idx] = func(val, i, j)
+
+    def map(self, func: Callable[[Number, int, int], Number]) -> MBase:
+        new_copy = self.copy()
+        new_copy.imap(func)
+        return new_copy
+
     def randomize(self, rand: Callable[[], Number] = lambda: random.uniform(-1.0, 1.0)) -> None:
         for i, _ in enumerate(self.data):
             self.data[i] = rand()
+
+    @property
+    def indexes(self) -> Iterable[Tuple[int, int]]:
+        return itertools.product(range(self.rows),
+                                 range(self.cols))
+
+    @property
+    def array_length(self) -> int:
+        return len(self)
+
+    def __len__(self) -> int:
+        return self.rows * self.cols
 
     def __add__(self, other: Union[MBase, Number]) -> MBase:
         return self._apply_op(other, operator.add)
