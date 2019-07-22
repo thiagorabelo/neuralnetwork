@@ -51,4 +51,30 @@ def iscalar_op(left: MBase, scalar: Number, operation: Callable[[Number, Number]
     return left
 
 
+def arange(start: Number, stop: Number = None, step: Number = 1.0):
+    if not step:
+        raise ValueError('step can not be None or 0')
+
+    if stop is None and start > 0.0:
+        start, stop = 0.0, start
+    elif stop is None and start < 0.0 < step:
+        step *= -1
+        start, stop = 0.0, start
+    elif start > stop and step > 0.0:
+        step *= -1
+
+    if start < stop:
+        while start < stop:
+            yield start
+            start += step
+    else:
+        while start > stop:
+            yield start
+            start += step
+
+
+def slice_range():
+    pass
+
+
 del Number, MBase, MatType

@@ -1,6 +1,8 @@
 import math
 import random
 
+import util
+
 from functools import wraps
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
@@ -305,28 +307,6 @@ class BackpropagationHelper:
         self.deltas_b: List[MBase] = [None] * len(self.linear_combinations)
 
 
-def arange(start, stop=None, step=1.0):
-    if not step:
-        raise ValueError('step can not be None or 0')
-
-    if stop == None and start > 0.0:
-        start, stop = 0.0, start
-    elif stop == None and start < 0.0 and step > 0.0:
-        step *= -1
-        start, stop = 0.0, start
-    elif start > stop and step > 0.0:
-        step *= -1
-
-    if start < stop:
-        while start < stop:
-            yield start
-            start += step
-    else:
-        while start > stop:
-            yield start
-            start += step
-
-
 if __name__ == '__main__':
     def known_test():
         mlp = MLP(2, [2, 1])
@@ -397,7 +377,7 @@ if __name__ == '__main__':
 
         train_set = tuple(
             ([i], [func(i)])
-            for i in arange(-2.0, 2.0, 0.1)
+            for i in util.arange(-2.0, 2.0, 0.1)
         )
 
         import random
