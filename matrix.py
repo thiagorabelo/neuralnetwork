@@ -6,26 +6,13 @@ import numbers
 import operator
 import random
 
+import util
+
 from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple, Any
 
 
 Number = Union[int, float]
 MBase = TypeVar('MBase', bound='MatrixBase')
-
-
-def _match(mat1: Matrix, mat2: Matrix) -> bool:
-    return mat2.rows == mat1.rows and mat2.cols == mat1.cols
-
-
-def _doest_match(mat1: Matrix, mat2: Matrix) -> ValueError:
-    return ValueError('Matrix dimensions does not match: (%d, %d), (%d, %d)' % (
-        mat1.rows, mat1.cols,
-        mat2.rows, mat2.cols,
-    ))
-
-
-def _unexpected(other: Any) -> ValueError:
-    return ValueError('Unexpected parameter of type %s' % type(other).__name__)
 
 
 def _get_type(obj: MBase) -> Type[Matrix]:
@@ -34,37 +21,7 @@ def _get_type(obj: MBase) -> Type[Matrix]:
     if isinstance(obj, MatrixBase):
         return type(obj)
 
-    raise _unexpected(obj)
-
-
-def matrix_op(left: MBase, right: MBase, operation: Callable[[Number, Number], Number]) -> MBase:
-    if not _match(left, right):
-        raise _doest_match(left, right)
-
-    cls = _get_type(right)
-    new_matrix = cls(right.rows, right.cols)
-    new_matrix.imap(lambda val, row, col: operation(left.get(row, col), right.get(row, col)))
-    return new_matrix
-
-
-def scalar_op(left: MBase, scalar: Number, operation: Callable[[Number, Number], Number]) -> MBase:
-    cls = _get_type(left)
-    new_matrix = cls(left.rows, left.cols)
-    new_matrix.imap(lambda val, row, col: operation(left.get(row, col), scalar))
-    return new_matrix
-
-
-def imatrix_op(left: MBase, right: MBase, operation: Callable[[Number, Number], Number]) -> MBase:
-    if not _match(left, right):
-        raise _doest_match(left, right)
-
-    left.imap(lambda val, row, col: operation(left.get(row, col), right.get(row, col)))
-    return left
-
-
-def iscalar_op(left: MBase, scalar: Number, operation: Callable[[Number, Number], Number]) -> MBase:
-    left.imap(lambda val, row, col: operation(val, scalar))
-    return left
+    raise util.unexpected(obj)
 
 
 class MatrixBase(abc.ABC):
@@ -90,6 +47,21 @@ class MatrixBase(abc.ABC):
     def __len__(self) -> int:
         return self.array_length
 
+    def __str__(self):
+        cols = [list(Col(self, col)) for col in range(self.cols)]
+        cols_fmt = [[self.fmt(elem) for elem in col] for col in cols]
+        max_cols = [max(len(c) for c in col) for col in cols_fmt]
+        buff = [None] * self.rows
+        sep = ',\n '
+        cols = None
+
+        for i in range(self.rows):
+            row_buff = [cols_fmt[j][i].rjust(max_cols[j], ' ')
+                        for j in range(self.cols)]
+            buff[i] = f'[{", ".join(row_buff)}]'
+
+        return f"[{sep.join(buff)}]"
+
     def dt_idx(self, row: int, col: int) -> int:
         return col + row * self.cols
 
@@ -105,36 +77,29 @@ class MatrixBase(abc.ABC):
         return new_copy
 
     def print(self) -> None:
-        buff = [None] * self.rows
-        sep = ',\n '
-
-        for i in range(self.rows):
-            row_buff = [self.fmt(self.data[self.dt_idx(i, j)]) for j in range(self.cols)]
-            buff[i] = f'[{", ".join(row_buff)}]'
-
-        print(f"[{sep.join(buff)}]")
+        print(str(self))
 
     def _apply_op(self,
                   other: Union[MBase, Number],
                   operation: Callable[[Number, Number], Number]) -> MBase:
 
         if isinstance(other, MatrixBase):
-            return matrix_op(self, other, operation)
+            return util.matrix_op(self, other, operation, _get_type(self))
 
         if isinstance(other, numbers.Number):
-            return scalar_op(self, other, operation)
+            return util.scalar_op(self, other, operation, _get_type(self))
 
-        raise _unexpected(other)
+        raise util.unexpected(other)
 
     def _iapply_op(self,
                    other: Union[MBase, Number],
                    operation: Callable[[Number, Number], Number]) -> MBase:
 
         if isinstance(other, MatrixBase):
-            return imatrix_op(self, other, operation)
+            return util.imatrix_op(self, other, operation)
 
         if isinstance(other, numbers.Number):
-            return iscalar_op(self, other, operation)
+            return util.iscalar_op(self, other, operation)
 
     def randomize(self, rand: Callable[[], Number] = lambda: random.uniform(-1.0, 1.0)) -> None:
         for i, _ in enumerate(self.data):
@@ -163,7 +128,7 @@ class MatrixBase(abc.ABC):
 
     def __imul__(self, other: Union[MBase, Number]) -> MBase:
         if isinstance(other, numbers.Number):
-            return iscalar_op(self, other, operator.imul)
+            return util.iscalar_op(self, other, operator.imul)
 
         raise ValueError('Can not do inplace matrix multiplication. Only scalar inplace '
                          'multiplications are allowed.')
@@ -190,7 +155,7 @@ class MatrixBase(abc.ABC):
         return self._apply_op(other, lambda val_b, val_a: operator.truediv(val_a, val_b))
 
     def __pow__(self, power: Number, modulo: Number = None):
-        new_matrix = self._apply_op(power, operator.powe)
+        new_matrix = self._apply_op(power, operator.pow)
 
         if modulo is not None:
             new_matrix._iapply_op(modulo, operator.mod)
@@ -227,7 +192,7 @@ class MatrixBase(abc.ABC):
 
             return new_matrix
 
-        raise _unexpected(other)
+        raise util.unexpected(other)
 
     def __rmatmul__(self, other: List[Number]):
         return Matrix.from_array_cols(self.rows, other, copy=False) @ self
@@ -279,10 +244,14 @@ class Row:
         self.row = row
 
     def __getitem__(self, col: int) -> Number:
-        return self.matrix.data[self.matrix.dt_idx(self.row, col)]
+        return self.matrix.get(self.row, col)
 
     def __setitem__(self, col: int, value: Number) -> None:
-        self.matrix.data[self.matrix.dt_idx(self.row, col)] = value
+        self.matrix.set(self.row, col, value)
+
+    def __iter__(self):
+        for col in range(self.matrix.cols):
+            yield self.matrix.get(self.row, col)
 
 
 class Col:
@@ -295,6 +264,10 @@ class Col:
 
     def __setitem__(self, row: int, value: Number) -> None:
         self.matrix.data[self.matrix.dt_idx(row, self.col)] = value
+
+    def __iter__(self):
+        for row in range(self.matrix.rows):
+            yield self.matrix.get(row, self.col)
 
 
 class Matrix(MatrixBase):
