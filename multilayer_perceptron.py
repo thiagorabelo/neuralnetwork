@@ -217,39 +217,32 @@ class Supervisor:
         inst_average_error = (error @ error.t).get(0, 0) / 2.0
         # TODO: Calc Global Average Error
 
-        linear_combinations = reversed(self.backpropagation.linear_combinations)
-        phi_layers = list(reversed(self.backpropagation.phi_layers))
-        layers_weights = list(reversed(self.mlp.layers_weights))
+        linear_combinations = self.backpropagation.linear_combinations
+        phi_layers = self.backpropagation.phi_layers
+        layers_weights = self.mlp.layers_weights
+        gradients = self.backpropagation.gradients
+        deltas_w = self.backpropagation.deltas_w
+        deltas_b = self.backpropagation.deltas_b
+        last_layer_idx = len(linear_combinations) - 1
 
         # Backpropagation
-        for index, linear_combination in enumerate(linear_combinations):
-            if not index == 0:
+        for index, linear_combination in util.enumerate_reversed(linear_combinations):
+            if not index == last_layer_idx:
                 derivative = linear_combination.map(self.mlp.activation_function.dfunc)
-                mult_gradients_weights = (layers_weights[index - 1].t
-                                          @ self.backpropagation.gradients[index - 1])
+                mult_gradients_weights = layers_weights[index + 1].t @ gradients[index + 1]
 
-                self.backpropagation.gradients[index] = derivative * mult_gradients_weights
-
-                self.backpropagation.deltas_w[index] = (-self.learning_rate *
-                                                        (self.backpropagation.gradients[index]
-                                                         @ phi_layers[index].t))
-
-                self.backpropagation.deltas_b[index] = (-self.learning_rate
-                                                        * self.backpropagation.gradients[index])
+                gradients[index] = derivative * mult_gradients_weights
+                deltas_w[index] = (-self.learning_rate * (gradients[index] @ phi_layers[index].t))
+                deltas_b[index] = (-self.learning_rate * gradients[index])
             else:
                 derivative = linear_combination.map(self.mlp.activation_func_output.dfunc)
-                self.backpropagation.gradients[index] = -error * derivative
+                gradients[index] = -error * derivative
 
-                self.backpropagation.deltas_w[index] = (-self.learning_rate *
-                                                        (self.backpropagation.gradients[index]
-                                                         @ phi_layers[index].t))
-
-                self.backpropagation.deltas_b[index] = (-self.learning_rate
-                                                        * self.backpropagation.gradients[index])
+                deltas_w[index] = (-self.learning_rate * (gradients[index] @ phi_layers[index].t))
+                deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
 
         # Weights corrections
-        for index, (deltas, deltas_b) in enumerate(zip(reversed(self.backpropagation.deltas_w),
-                                                       reversed(self.backpropagation.deltas_b))):
+        for index, (deltas, deltas_b) in enumerate(zip(deltas_w, deltas_b)):
             self.mlp.layers_weights[index] += deltas
             self.mlp.layers_bias[index] += deltas_b
 
@@ -358,28 +351,28 @@ if __name__ == '__main__':
         print('\n'.join(buffer))
 
     def test_function():
-        # def func(x):
-        #     return math.pow(x, 2.0) - 10.0*x + 21
-
-        # Variando do x' até x'' (3 -> 4), dividido em 100 partes
-        # train_set = tuple(
-        #     ([3.0 + i*(4.0/20.0)], [func(3.0 + i*(4.0/20.0))])
-        #     for i in range(21)
-        # )
-
-        # https://www.mathworks.com/help/deeplearning/ug/improve-neural-network-generalization-and-avoid-overfitting.html;jsessionid=d7ccdb5dad86ecd28c93a845c8c8
         def func(x):
-            return 2*math.pow(x, 3) - math.pow(x, 2) + 10*x - 4
+            return math.pow(x, 2.0) - 10.0*x + 21
 
+        # Variando do x' até x'' (3 -> 7), dividido em 100 partes
         train_set = tuple(
             ([i], [func(i)])
-            for i in util.arange(-2.0, 2.0, 0.1)
+            for i in util.divide_arange(1.0, 9.0, 40)
         )
+
+        # https://www.mathworks.com/help/deeplearning/ug/improve-neural-network-generalization-and-avoid-overfitting.html;jsessionid=d7ccdb5dad86ecd28c93a845c8c8
+        # def func(x):
+        #     return 2*math.pow(x, 3) - math.pow(x, 2) + 10*x - 4
+        #
+        # train_set = tuple(
+        #     ([i], [func(i)])
+        #     for i in util.divide_arange(-3.0, 3.0, 40)
+        # )
 
         import random
         from pylab import plot, show
 
-        mlp = MLP(1, [10, 20, 1],
+        mlp = MLP(1, [10, 30, 1],
                   ACTIVATIONS_FUNCTIONS['sigmoid'],
                   ACTIVATIONS_FUNCTIONS['linear'])
 
@@ -387,21 +380,21 @@ if __name__ == '__main__':
 
         sup = Supervisor(mlp, 0.01)
 
-        sup.train_set(train_set, 0.05, 1000)
+        sup.train_set(train_set, 0.005, 3000)
 
         # validation = tuple(
         #     ([x], [func(x)])
         #     for x in range(-7, 18)
         # )
 
-        # validation = tuple(
-        #     ([x], [func(x)])
-        #     for x in range(-10, 10)
-        # )
+        validation = tuple(
+            ([x], [func(x)])
+            for x in util.divide_arange(0.0, 10.0, 200)
+        )
 
         plot(
-            [i[0][0] for i in train_set], [i[1][0] for i in train_set], 'b',
-            [i[0][0] for i in train_set], [mlp.predict(i[0]) for i in train_set], 'r'
+            [i[0][0] for i in validation], [i[1][0] for i in validation], 'b',
+            [i[0][0] for i in validation], [mlp.predict(i[0]) for i in validation], 'r'
         )
         show()
 
