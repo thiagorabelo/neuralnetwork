@@ -296,106 +296,71 @@ class BackpropagationHelper:
         self.deltas_b: List[MBase] = [None] * len(self.linear_combinations)
 
 
+# def known_test():
+#     mlp = MLP(2, [2, 1])
+#     sup = Supervisor(mlp)
+#
+#     ws = [
+#         # L1
+#         0.8, 0.3,
+#         -0.6, -0.4,
+#
+#         # b1
+#         0.7,
+#         -0.4,
+#
+#         # L2
+#         0.7,
+#         -0.8,
+#
+#         # b2
+#         -0.3,
+#     ]
+#
+#     ws_iter = iter(ws)
+#
+#     for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
+#         weights.randomize(lambda: next(ws_iter))
+#         bias.randomize(lambda: next(ws_iter))
+#
+#     for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
+#         weights.print()
+#         bias.print()
+#         print('\n')
+#
+#     sup.train([1, 1], [0])
+
 if __name__ == '__main__':
-    def known_test():
-        mlp = MLP(2, [2, 1])
-        sup = Supervisor(mlp)
+    import argparse
+    import importlib
+    import sys
 
-        ws = [
-            # L1
-            0.8, 0.3,
-            -0.6, -0.4,
+    def main_func():
+        def get_argv():
+            argv = sys.argv
+            if argv[0].endswith(__file__):
+                argv = argv[1:]
+            return argv
 
-            # b1
-            0.7,
-            -0.4,
+        def open_module(module_name):
+            try:
+                module = importlib.import_module(f'examples.{module_name}')
+            except ModuleNotFoundError as ex:
+                raise argparse.ArgumentError(module_example_arg, str(ex))
 
-            # L2
-            0.7,
-            -0.8,
+            try:
+                module.main
+            except AttributeError as ex:
+                raise argparse.ArgumentError(module_example_arg, str(ex))
 
-            # b2
-            -0.3,
-        ]
+            return module
 
-        ws_iter = iter(ws)
+        parser = argparse.ArgumentParser(description="Call some example module")
+        module_example_arg = parser.add_argument('module_example',
+                                                 type=open_module,
+                                                 help="The module example that contains "
+                                                      "a main function")
+        options = parser.parse_args(get_argv())
+        options.module_example.main()
 
-        for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
-            weights.randomize(lambda: next(ws_iter))
-            bias.randomize(lambda: next(ws_iter))
-
-        for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
-            weights.print()
-            bias.print()
-            print('\n')
-
-        sup.train([1, 1], [0])
-
-    def xor_test():
-        mlp = MLP(2, [2, 1])
-        sup = Supervisor(mlp)
-
-        train_set = (
-            ([0, 0], [0]),
-            ([0, 1], [1]),
-            ([1, 0], [1]),
-            ([1, 1], [0]),
-        )
-
-        sup.train_set(train_set, 0.05, 10000)
-
-        buffer = [''] * len(train_set)
-        for idx, (input_array, target_array) in enumerate(train_set, 0):
-            output = mlp.predict(input_array)
-            buffer[idx] = f"{input_array[0]} ^ {input_array[1]} = {output[0]} :: {target_array[0]}"
-        print('\n'.join(buffer))
-
-    def test_function():
-        def func(x):
-            return math.pow(x, 2.0) - 10.0*x + 21
-
-        # Variando do x' até x'' (3 -> 7), dividido em 100 partes
-        train_set = tuple(
-            ([i], [func(i)])
-            for i in util.divide_arange(1.0, 9.0, 40)
-        )
-
-        # https://www.mathworks.com/help/deeplearning/ug/improve-neural-network-generalization-and-avoid-overfitting.html;jsessionid=d7ccdb5dad86ecd28c93a845c8c8
-        # def func(x):
-        #     return 2*math.pow(x, 3) - math.pow(x, 2) + 10*x - 4
-        #
-        # train_set = tuple(
-        #     ([i], [func(i)])
-        #     for i in util.divide_arange(-3.0, 3.0, 40)
-        # )
-
-        import random
-        from pylab import plot, show
-
-        mlp = MLP(1, [10, 30, 1],
-                  ACTIVATIONS_FUNCTIONS['sigmoid'],
-                  ACTIVATIONS_FUNCTIONS['linear'])
-
-        mlp.randomise_weights(lambda: random.uniform(-1.0, 1.0))
-
-        sup = Supervisor(mlp, 0.01)
-
-        sup.train_set(train_set, 0.005, 3000)
-
-        # validation = tuple(
-        #     ([x], [func(x)])
-        #     for x in range(-7, 18)
-        # )
-
-        validation = tuple(
-            ([x], [func(x)])
-            for x in util.divide_arange(0.0, 10.0, 200)
-        )
-
-        plot(
-            [i[0][0] for i in validation], [i[1][0] for i in validation], 'b',
-            [i[0][0] for i in validation], [mlp.predict(i[0]) for i in validation], 'r'
-        )
-        show()
-
-    test_function()
+    main_func()
