@@ -217,21 +217,18 @@ class Supervisor:
         inst_average_error = (error @ error.t).get(0, 0) / 2.0
         # TODO: Calc Global Average Error
 
-        linear_combinations = reversed(
-            self.backpropagation.linear_combinations)
+        linear_combinations = reversed(self.backpropagation.linear_combinations)
         phi_layers = list(reversed(self.backpropagation.phi_layers))
         layers_weights = list(reversed(self.mlp.layers_weights))
 
         # Backpropagation
         for index, linear_combination in enumerate(linear_combinations):
             if not index == 0:
-                derivative = linear_combination.map(
-                    self.mlp.activation_function.dfunc)
+                derivative = linear_combination.map(self.mlp.activation_function.dfunc)
                 mult_gradients_weights = (layers_weights[index - 1].t
                                           @ self.backpropagation.gradients[index - 1])
 
-                self.backpropagation.gradients[index] = derivative * \
-                    mult_gradients_weights
+                self.backpropagation.gradients[index] = derivative * mult_gradients_weights
 
                 self.backpropagation.deltas_w[index] = (-self.learning_rate *
                                                         (self.backpropagation.gradients[index]
@@ -240,8 +237,7 @@ class Supervisor:
                 self.backpropagation.deltas_b[index] = (-self.learning_rate
                                                         * self.backpropagation.gradients[index])
             else:
-                derivative = linear_combination.map(
-                    self.mlp.activation_func_output.dfunc)
+                derivative = linear_combination.map(self.mlp.activation_func_output.dfunc)
                 self.backpropagation.gradients[index] = -error * derivative
 
                 self.backpropagation.deltas_w[index] = (-self.learning_rate *

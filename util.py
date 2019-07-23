@@ -51,7 +51,7 @@ def iscalar_op(left: MBase, scalar: Number, operation: Callable[[Number, Number]
     return left
 
 
-def arange(start: Number, stop: Number = None, step: Number = 1.0):
+def arange(start: Number, stop: Number = None, step: Number = 1.0) -> Iterable[Number]:
     if not step:
         raise ValueError('step can not be None or 0')
 
@@ -73,8 +73,13 @@ def arange(start: Number, stop: Number = None, step: Number = 1.0):
             start += step
 
 
-def slice_range():
-    pass
+def divide_arange(start: Number, stop: Number, slices: Number) -> Iterable[Number]:
+    step = (stop - start) / abs(slices)
+    return arange(start, stop, step)
+
+
+def enumerate_reversed(a_list: List[Number]) -> Iterable[Tuple[int, Number]]:
+    return zip(range(len(a_list) - 1, -1, -1), reversed(a_list))
 
 
 del Number, MBase, MatType
