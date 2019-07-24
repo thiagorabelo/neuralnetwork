@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import abc
 import itertools
 import numbers
@@ -8,14 +6,12 @@ import random
 
 import util
 
-from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple, Any
+from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple
+
+from util import MatBaseType, MatType, MatProxyType, RowType, ColType, Number
 
 
-Number = Union[int, float]
-MBase = TypeVar('MBase', bound='MatrixBase')
-
-
-def _get_type(obj: MBase) -> Type[Matrix]:
+def _get_type(obj: MatBaseType) -> Type[MatType]:
     if isinstance(obj, ProxyMatrix):
         return type(obj.matrix)
     if isinstance(obj, MatrixBase):
@@ -60,8 +56,8 @@ class MatrixBase(abc.ABC):
         return f"{prefix}[{sep.join(buff)}]{suffix}"
 
     def _apply_op(self,
-                  other: Union[MBase, Number],
-                  operation: Callable[[Number, Number], Number]) -> MBase:
+                  other: Union[MatBaseType, Number],
+                  operation: Callable[[Number, Number], Number]) -> MatBaseType:
 
         if isinstance(other, MatrixBase):
             return util.matrix_op(self, other, operation, _get_type(self))
@@ -72,8 +68,8 @@ class MatrixBase(abc.ABC):
         raise util.unexpected(other)
 
     def _iapply_op(self,
-                   other: Union[MBase, Number],
-                   operation: Callable[[Number, Number], Number]) -> MBase:
+                   other: Union[MatBaseType, Number],
+                   operation: Callable[[Number, Number], Number]) -> MatBaseType:
 
         if isinstance(other, MatrixBase):
             return util.imatrix_op(self, other, operation)
@@ -90,7 +86,7 @@ class MatrixBase(abc.ABC):
             val = self.data[idx]
             self.data[idx] = func(val, i, j)
 
-    def map(self, func: Callable[[Number, int, int], Number]) -> MBase:
+    def map(self, func: Callable[[Number, int, int], Number]) -> MatBaseType:
         new_copy = self.copy()
         new_copy.imap(func)
         return new_copy
@@ -111,53 +107,53 @@ class MatrixBase(abc.ABC):
     def __len__(self) -> int:
         return self.rows * self.cols
 
-    def __add__(self, other: Union[MBase, Number]) -> MBase:
+    def __add__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._apply_op(other, operator.add)
 
-    def __iadd__(self, other: Union[MBase, Number]) -> MBase:
+    def __iadd__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._iapply_op(other, operator.iadd)
 
-    def __radd__(self, other: Number) -> MBase:
+    def __radd__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, operator.add)
 
-    def __sub__(self, other: Union[MBase, Number]) -> MBase:
+    def __sub__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._apply_op(other, operator.sub)
 
-    def __isub__(self, other: Union[MBase, Number]) -> MBase:
+    def __isub__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._iapply_op(other, operator.isub)
 
-    def __rsub__(self, other: Number) -> MBase:
+    def __rsub__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, lambda val_b, val_a: operator.sub(val_a, val_b))
 
-    def __mul__(self, other: Number) -> MBase:
+    def __mul__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, operator.mul)
 
-    def __imul__(self, other: Union[MBase, Number]) -> MBase:
+    def __imul__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         if isinstance(other, numbers.Number):
             return util.iscalar_op(self, other, operator.imul)
 
         raise ValueError('Can not do inplace matrix multiplication. Only scalar inplace '
                          'multiplications are allowed.')
 
-    def __rmul__(self, other: Number) -> MBase:
+    def __rmul__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, operator.mul)
 
-    def __floordiv__(self, other: Number) -> MBase:
+    def __floordiv__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, operator.floordiv)
 
-    def __ifloordiv__(self, other: Union[MBase, Number]) -> MBase:
+    def __ifloordiv__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._iapply_op(other, operator.ifloordiv)
 
-    def __rfloordiv__(self, other: Number) -> MBase:
+    def __rfloordiv__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, lambda val_b, val_a: operator.floordiv(val_a, val_b))
 
-    def __truediv__(self, other: Union[MBase, Number]) -> MBase:
+    def __truediv__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._apply_op(other, operator.truediv)
 
-    def __itruediv__(self, other: Union[MBase, Number]) -> MBase:
+    def __itruediv__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
         return self._iapply_op(other, operator.itruediv)
 
-    def __rtruediv__(self, other: Number) -> MBase:
+    def __rtruediv__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, lambda val_b, val_a: operator.truediv(val_a, val_b))
 
     def __pow__(self, power: Number, modulo: Number = None):
@@ -174,7 +170,7 @@ class MatrixBase(abc.ABC):
     def __ipow__(self, other):
         return self._iapply_op(other, operator.pow)
 
-    def __matmul__(self, other: MBase) -> MBase:
+    def __matmul__(self, other: MatBaseType) -> MatBaseType:
         if isinstance(other, MatrixBase):
             if not self.cols == other.rows:
                 raise ValueError(
@@ -222,10 +218,10 @@ class MatrixBase(abc.ABC):
         copy.imap(lambda val, row, col: ~val)
         return copy
 
-    def __getitem__(self, row: int) -> Row:
+    def __getitem__(self, row: int) -> RowType:
         return Row(self, row)
 
-    def __setitem__(self, row: int, value: Number) -> Row:
+    def __setitem__(self, row: int, value: Number) -> RowType:
         return Row(self, row)
 
     def __iter__(self) -> Iterable[Number]:
@@ -241,11 +237,11 @@ class MatrixBase(abc.ABC):
         self.data[self.dt_idx(row, col)] = val
 
     @abc.abstractmethod
-    def copy(self) -> MBase: ...
+    def copy(self) -> MatBaseType: ...
 
 
 class Row:
-    def __init__(self, matrix: Matrix, row: int) -> None:
+    def __init__(self, matrix: MatType, row: int) -> None:
         self.matrix = matrix
         self.row = row
 
@@ -261,7 +257,7 @@ class Row:
 
 
 class Col:
-    def __init__(self, matrix: Matrix, col: int) -> None:
+    def __init__(self, matrix: MatType, col: int) -> None:
         self.matrix = matrix
         self.col = col
 
@@ -291,7 +287,7 @@ class Matrix(MatrixBase):
             self.data = data
 
     @classmethod
-    def from_array(cls, rows: int, cols: int, array: List[Number], copy: bool = True) -> Matrix:
+    def from_array(cls, rows: int, cols: int, array: List[Number], copy: bool = True) -> MatType:
         if not isinstance(array, (list, tuple)):
             array = list(array)
 
@@ -304,30 +300,30 @@ class Matrix(MatrixBase):
         ))
 
     @classmethod
-    def from_array_rows(cls, rows: int, array: List[Number], copy: bool = True) -> Matrix:
+    def from_array_rows(cls, rows: int, array: List[Number], copy: bool = True) -> MatType:
         cols: int = len(array) // rows
         return Matrix.from_array(rows, cols, array, copy)
 
     @classmethod
-    def from_array_cols(cls, cols: int, array: List[Number], copy: bool = True) -> Matrix:
+    def from_array_cols(cls, cols: int, array: List[Number], copy: bool = True) -> MatType:
         rows: int = len(array) // cols
         return Matrix.from_array(rows, cols, array, copy)
 
     @property
-    def t(self) -> ProxyTransposed:  # pylint: disable=invalid-name
+    def t(self) -> MatProxyType:  # pylint: disable=invalid-name
         return ProxyTransposed(self)
 
-    def transpose(self) -> Matrix:
+    def transpose(self) -> MatType:
         return self.t * 1  # Make an actual Matrix as copy from ProxyTransposed
 
-    def copy(self) -> MBase:
+    def copy(self) -> MatBaseType:
         cls = type(self)
         return cls(self.rows, self.cols, self.data)
 
 
 class ProxyMatrix(MatrixBase):
 
-    def __init__(self, matrix: MBase) -> None:
+    def __init__(self, matrix: MatBaseType) -> None:
         super().__init__()
         self.matrix = matrix
 
@@ -344,7 +340,7 @@ class ProxyMatrix(MatrixBase):
         return self.matrix.data
 
     @abc.abstractmethod
-    def copy(self) -> MBase: ...
+    def copy(self) -> MatBaseType: ...
 
 
 class ProxyTransposed(ProxyMatrix):
@@ -365,15 +361,12 @@ class ProxyTransposed(ProxyMatrix):
         return row + col * self.rows
 
     @property
-    def t(self) -> MBase:  # pylint: disable=invalid-name
+    def t(self) -> MatBaseType:  # pylint: disable=invalid-name
         return self.matrix
 
-    def transpose(self) -> MBase:
+    def transpose(self) -> MatBaseType:
         return self.t.copy()
 
-    def copy(self) -> MBase:
+    def copy(self) -> MatBaseType:
         cls = type(self)
         return cls(self.matrix.copy())
-
-
-del Number, MBase

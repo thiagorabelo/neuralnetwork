@@ -6,10 +6,7 @@ import util
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
 from matrix import Matrix
-
-
-Number = Union[int, float]
-MBase = TypeVar('MBase', bound='MatrixBase')
+from util import MatBaseType, MatType, MatProxyType, RowType, ColType, Number
 
 
 class ActivationFunction:
@@ -127,7 +124,9 @@ class MLP:
             weights.randomize(*args)
             bias.randomize(*args)
 
-    def linear_combination(self, input_matrix: MBase, weights: MBase, bias) -> MBase:
+    def linear_combination(self,
+                           input_matrix: MatBaseType,
+                           weights: MatBaseType, bias) -> MatBaseType:
         # | w11 w21 wb1 | * | i1 |
         # | w12 w22 wb2 |   | i2 |
         #                   |  1 |
@@ -146,7 +145,7 @@ class MLP:
         matrix += bias
         return matrix
 
-    def apply_activation_function(self, matrix: MBase, last_layer: bool) -> MBase:
+    def apply_activation_function(self, matrix: MatBaseType, last_layer: bool) -> MatBaseType:
         if not last_layer:
             matrix.imap(self.activation_function)
         else:
@@ -154,7 +153,7 @@ class MLP:
 
         return matrix
 
-    def walk_layers(self) -> Iterable[Tuple[MBase, MBase, int, bool]]:
+    def walk_layers(self) -> Iterable[Tuple[MatBaseType, MatBaseType, int, bool]]:
         last_layer_index = len(self.layers_weights) - 1
 
         for index, (weights, bias) in enumerate(zip(self.layers_weights, self.layers_bias)):
@@ -179,7 +178,7 @@ class Supervisor:
         self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
 
-    def forward_signal(self, matrix: MBase) -> MBase:
+    def forward_signal(self, matrix: MatBaseType) -> MatBaseType:
         self.backpropagation.phi_layers[0] = matrix
 
         for weights, bias, index, is_last_layer in self.mlp.walk_layers():
@@ -214,7 +213,7 @@ class Supervisor:
         return inst_average_error
 
     def train_set(self,
-                  train_set: List[Tuple[Number, Number]],
+                  train_set: Iterable[Tuple[Iterable[Number], Iterable[Number]]],
                   min_error: float,
                   max_epochs: int):
         average_global_error = 0.0
@@ -247,21 +246,21 @@ class BackpropagationHelper:
         self.supervisor: Supervisor = supervisor
 
         # vi(n)
-        self.linear_combinations: List[MBase] = [None] * min(len(mlp.layers_weights),
-                                                             len(mlp.layers_bias))
+        self.linear_combinations: List[MatBaseType] = [None] * min(len(mlp.layers_weights),
+                                                                   len(mlp.layers_bias))
         # φ(vi(n))
-        self.phi_layers: List[MBase] = [None] * len(self.linear_combinations)
+        self.phi_layers: List[MatBaseType] = [None] * len(self.linear_combinations)
 
         # δi(n)
-        self.gradients: List[MBase] = [None] * len(self.linear_combinations)
+        self.gradients: List[MatBaseType] = [None] * len(self.linear_combinations)
 
         # Δwi(n)
-        self.deltas_w: List[MBase] = [None] * len(self.linear_combinations)
+        self.deltas_w: List[MatBaseType] = [None] * len(self.linear_combinations)
 
         # Δbi(n)
-        self.deltas_b: List[MBase] = [None] * len(self.linear_combinations)
+        self.deltas_b: List[MatBaseType] = [None] * len(self.linear_combinations)
 
-    def backpropagate(self, error: MBase) -> None:
+    def backpropagate(self, error: MatBaseType) -> None:
         mlp = self.supervisor.mlp
         supervisor = self.supervisor
 

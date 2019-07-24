@@ -1,12 +1,13 @@
-from __future__ import annotations
-
 from functools import wraps
 from typing import Any, Callable, Union, Iterable, Iterator, List, Tuple, TypeVar
 
 
-Number = Union[int, float]
-MBase = TypeVar('MBase', bound='matrix.MatrixBase')
-MatType = TypeVar('matrix.Matrix', bound='matrix.Matrix')
+Number = TypeVar('Number', bound='numbers.Number')
+MatBaseType = TypeVar('MatBaseType', bound='matrix.MatrixBase')
+MatType = TypeVar('MatType', bound='matrix.Matrix')
+MatProxyType = TypeVar('MatProxyType', bound='matrix.Matrix')
+ColType = TypeVar('ColType', bound='matrix.Col')
+RowType = TypeVar('RowType', bound='matrix.Row')
 
 
 def match(mat1: MatType, mat2: MatType) -> bool:
@@ -24,10 +25,10 @@ def unexpected(other: Any) -> ValueError:
     return ValueError('Unexpected parameter of type %s' % type(other).__name__)
 
 
-def matrix_op(left: MBase,
-              right: MBase,
+def matrix_op(left: MatBaseType,
+              right: MatBaseType,
               operation: Callable[[Number, Number], Number],
-              cls: MatType) -> MBase:
+              cls: MatType) -> MatBaseType:
 
     if not match(left, right):
         raise doest_match(left, right)
@@ -37,19 +38,19 @@ def matrix_op(left: MBase,
     return new_matrix
 
 
-def scalar_op(left: MBase,
+def scalar_op(left: MatBaseType,
               scalar: Number,
               operation: Callable[[Number, Number], Number],
-              cls: MatType) -> MBase:
+              cls: MatType) -> MatBaseType:
 
     new_matrix = cls(left.rows, left.cols)
     new_matrix.imap(lambda val, row, col: operation(left.get(row, col), scalar))
     return new_matrix
 
 
-def imatrix_op(left: MBase,
-               right: MBase,
-               operation: Callable[[Number, Number], Number]) -> MBase:
+def imatrix_op(left: MatBaseType,
+               right: MatBaseType,
+               operation: Callable[[Number, Number], Number]) -> MatBaseType:
 
     if not match(left, right):
         raise doest_match(left, right)
@@ -58,9 +59,9 @@ def imatrix_op(left: MBase,
     return left
 
 
-def iscalar_op(left: MBase,
+def iscalar_op(left: MatBaseType,
                scalar: Number,
-               operation: Callable[[Number, Number], Number]) -> MBase:
+               operation: Callable[[Number, Number], Number]) -> MatBaseType:
 
     left.imap(lambda val, row, col: operation(val, scalar))
     return left
@@ -108,6 +109,3 @@ def clip(min_val: Number, max_val: Number) -> \
                         value)
         return wrapper
     return decorator
-
-
-del Number, MBase, MatType
