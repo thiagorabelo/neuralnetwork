@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple, Any
+from functools import wraps
+from typing import Any, Callable, Union, Iterable, Iterator, List, Tuple, TypeVar
 
 
 Number = Union[int, float]
@@ -23,7 +24,11 @@ def unexpected(other: Any) -> ValueError:
     return ValueError('Unexpected parameter of type %s' % type(other).__name__)
 
 
-def matrix_op(left: MBase, right: MBase, operation: Callable[[Number, Number], Number], cls: MatType) -> MBase:
+def matrix_op(left: MBase,
+              right: MBase,
+              operation: Callable[[Number, Number], Number],
+              cls: MatType) -> MBase:
+
     if not match(left, right):
         raise doest_match(left, right)
 
@@ -32,13 +37,20 @@ def matrix_op(left: MBase, right: MBase, operation: Callable[[Number, Number], N
     return new_matrix
 
 
-def scalar_op(left: MBase, scalar: Number, operation: Callable[[Number, Number], Number], cls: MatType) -> MBase:
+def scalar_op(left: MBase,
+              scalar: Number,
+              operation: Callable[[Number, Number], Number],
+              cls: MatType) -> MBase:
+
     new_matrix = cls(left.rows, left.cols)
     new_matrix.imap(lambda val, row, col: operation(left.get(row, col), scalar))
     return new_matrix
 
 
-def imatrix_op(left: MBase, right: MBase, operation: Callable[[Number, Number], Number]) -> MBase:
+def imatrix_op(left: MBase,
+               right: MBase,
+               operation: Callable[[Number, Number], Number]) -> MBase:
+
     if not match(left, right):
         raise doest_match(left, right)
 
@@ -46,7 +58,10 @@ def imatrix_op(left: MBase, right: MBase, operation: Callable[[Number, Number], 
     return left
 
 
-def iscalar_op(left: MBase, scalar: Number, operation: Callable[[Number, Number], Number]) -> MBase:
+def iscalar_op(left: MBase,
+               scalar: Number,
+               operation: Callable[[Number, Number], Number]) -> MBase:
+
     left.imap(lambda val, row, col: operation(val, scalar))
     return left
 
@@ -78,8 +93,21 @@ def divide_arange(start: Number, stop: Number, slices: Number) -> Iterable[Numbe
     return arange(start, stop, step)
 
 
-def enumerate_reversed(a_list: List[Number]) -> Iterable[Tuple[int, Number]]:
+def enumerate_reversed(a_list: List[Number]) -> Union[Iterable[Tuple[int, Number]],
+                                                      Iterator[Tuple[int, Number]]]:
     return zip(range(len(a_list) - 1, -1, -1), reversed(a_list))
+
+
+def clip(min_val: Number, max_val: Number) -> \
+        Callable[[Number, Number], Callable[[Number], Number]]:
+    def decorator(func: Callable[[Number], Number]) -> Callable[[Number], Number]:
+        @wraps(func)
+        def wrapper(value: Number) -> Number:
+            return func(min_val if value < min_val else
+                        max_val if value > max_val else
+                        value)
+        return wrapper
+    return decorator
 
 
 del Number, MBase, MatType

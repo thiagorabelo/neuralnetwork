@@ -3,7 +3,6 @@ import random
 
 import util
 
-from functools import wraps
 from typing import List, Union, Callable, TypeVar, Iterable, Tuple
 
 from matrix import Matrix
@@ -31,19 +30,7 @@ class ActivationFunction:
         return self._func(val)
 
 
-def clip(min_val: Number, max_val: Number) -> \
-        Callable[[Number, Number], Callable[[Number], Number]]:
-    def decorator(func: Callable[[Number], Number]) -> Callable[[Number], Number]:
-        @wraps(func)
-        def wrapper(value: Number) -> Number:
-            return func(min_val if value < min_val else
-                        max_val if value > max_val else
-                        value)
-        return wrapper
-    return decorator
-
-
-@clip(-700, 700)
+@util.clip(-700, 700)
 def _sigmoid(val: Number) -> Number:
     return 1.0 / (1.0 + math.exp(-val))
 
@@ -192,6 +179,19 @@ class Supervisor:
         self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
 
+    def forward_signal(self, matrix: MBase) -> MBase:
+        self.backpropagation.phi_layers[0] = matrix
+
+        for weights, bias, index, is_last_layer in self.mlp.walk_layers():
+            matrix = self.mlp.linear_combination(matrix, weights, bias)
+            self.backpropagation.linear_combinations[index] = matrix
+
+            matrix = self.mlp.apply_activation_function(matrix.copy(), is_last_layer)
+            if not is_last_layer:
+                self.backpropagation.phi_layers[index + 1] = matrix
+
+        return matrix
+
     def train(self, input_array: List[Number], target_array: List[Number]) -> Number:
         # Δ/δ	Delta/delta
         # Φ/φ	Phi/phi
@@ -203,48 +203,13 @@ class Supervisor:
         matrix = Matrix.from_array(self.mlp.n_inputs, 1, input_array)
         target = Matrix.from_array(len(target_array), 1, target_array)
 
-        self.backpropagation.phi_layers[0] = matrix
-
-        for weights, bias, index, is_last_layer in self.mlp.walk_layers():
-            matrix = self.mlp.linear_combination(matrix, weights, bias)
-            self.backpropagation.linear_combinations[index] = matrix
-
-            matrix = self.mlp.apply_activation_function(matrix.copy(), is_last_layer)
-            if not is_last_layer:
-                self.backpropagation.phi_layers[index + 1] = matrix
+        matrix = self.forward_signal(matrix)
 
         error = target - matrix
         inst_average_error = (error @ error.t).get(0, 0) / 2.0
-        # TODO: Calc Global Average Error
 
-        linear_combinations = self.backpropagation.linear_combinations
-        phi_layers = self.backpropagation.phi_layers
-        layers_weights = self.mlp.layers_weights
-        gradients = self.backpropagation.gradients
-        deltas_w = self.backpropagation.deltas_w
-        deltas_b = self.backpropagation.deltas_b
-        last_layer_idx = len(linear_combinations) - 1
-
-        # Backpropagation
-        for index, linear_combination in util.enumerate_reversed(linear_combinations):
-            if not index == last_layer_idx:
-                derivative = linear_combination.map(self.mlp.activation_function.dfunc)
-                mult_gradients_weights = layers_weights[index + 1].t @ gradients[index + 1]
-
-                gradients[index] = derivative * mult_gradients_weights
-                deltas_w[index] = (-self.learning_rate * (gradients[index] @ phi_layers[index].t))
-                deltas_b[index] = (-self.learning_rate * gradients[index])
-            else:
-                derivative = linear_combination.map(self.mlp.activation_func_output.dfunc)
-                gradients[index] = -error * derivative
-
-                deltas_w[index] = (-self.learning_rate * (gradients[index] @ phi_layers[index].t))
-                deltas_b[index] = -self.learning_rate * self.backpropagation.gradients[index]
-
-        # Weights corrections
-        for index, (deltas, deltas_b) in enumerate(zip(deltas_w, deltas_b)):
-            self.mlp.layers_weights[index] += deltas
-            self.mlp.layers_bias[index] += deltas_b
+        self.backpropagation.backpropagate(error)
+        self.backpropagation.adjust_weights()
 
         return inst_average_error
 
@@ -261,15 +226,14 @@ class Supervisor:
             for iteration, (input_array, target_array) in enumerate(random_train_set, 1):
                 try:
                     inst_average_error = self.train(input_array, target_array)
-                except:
+                except Exception as ex:
                     print(f"ERROR ON: Epoch={epoch}, Iteration={iteration}")
-                    raise
+                    raise ex
                 average_global_error += inst_average_error
 
             average_global_error /= train_set_size
 
-            print(
-                f'AvgGlobalError={round(average_global_error, 15)} - Epoch={epoch}')
+            print(f'AvgGlobalError={round(average_global_error, 15)} - Epoch={epoch}')
 
             if average_global_error <= min_error:
                 break
@@ -278,11 +242,13 @@ class Supervisor:
 class BackpropagationHelper:
 
     def __init__(self, supervisor: Supervisor):
-        self.supervisor = supervisor
+        mlp = supervisor.mlp
+
+        self.supervisor: Supervisor = supervisor
 
         # vi(n)
-        self.linear_combinations: List[MBase] = [None] * min(len(self.supervisor.mlp.layers_weights),
-                                                             len(self.supervisor.mlp.layers_bias))
+        self.linear_combinations: List[MBase] = [None] * min(len(mlp.layers_weights),
+                                                             len(mlp.layers_bias))
         # φ(vi(n))
         self.phi_layers: List[MBase] = [None] * len(self.linear_combinations)
 
@@ -294,3 +260,38 @@ class BackpropagationHelper:
 
         # Δbi(n)
         self.deltas_b: List[MBase] = [None] * len(self.linear_combinations)
+
+    def backpropagate(self, error: MBase) -> None:
+        mlp = self.supervisor.mlp
+        supervisor = self.supervisor
+
+        phi_layers = self.phi_layers
+        layers_weights = mlp.layers_weights
+        gradients = self.gradients
+        deltas_w = self.deltas_w
+        deltas_b = self.deltas_b
+
+        reversed_linear_combinations = util.enumerate_reversed(self.linear_combinations)
+
+        # Calculate output layer deltas
+        index, output_layer_linear_combinations = next(reversed_linear_combinations)
+        derivative = output_layer_linear_combinations.map(mlp.activation_func_output.dfunc)
+        gradients[index] = -error * derivative
+        deltas_w[index] = -supervisor.learning_rate * (gradients[index] @ phi_layers[index].t)
+        deltas_b[index] = -supervisor.learning_rate * gradients[index]
+
+        # Calculate hidden layer deltas
+        for index, linear_combination in reversed_linear_combinations:
+            derivative = linear_combination.map(mlp.activation_function.dfunc)
+            mult_gradients_weights = layers_weights[index + 1].t @ gradients[index + 1]
+
+            gradients[index] = derivative * mult_gradients_weights
+            deltas_w[index] = (-supervisor.learning_rate * (gradients[index] @ phi_layers[index].t))
+            deltas_b[index] = (-supervisor.learning_rate * gradients[index])
+
+    def adjust_weights(self) -> None:
+        mlp = self.supervisor.mlp
+
+        for index, (deltas, deltas_b) in enumerate(zip(self.deltas_w, self.deltas_b)):
+            mlp.layers_weights[index] += deltas
+            mlp.layers_bias[index] += deltas_b
