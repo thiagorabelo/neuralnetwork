@@ -277,7 +277,11 @@ class BackpropagationHelper:
         index, output_layer_linear_combinations = next(reversed_linear_combinations)
         derivative = output_layer_linear_combinations.map(mlp.activation_func_output.dfunc)
         gradients[index] = -error * derivative
-        deltas_w[index] = -supervisor.learning_rate * (gradients[index] @ phi_layers[index].t)
+
+        # deltas_w[index] = -supervisor.learning_rate * (gradients[index] @ phi_layers[index].t)
+        deltas_w[index] = gradients[index] @ phi_layers[index].t
+        deltas_w[index] *= -supervisor.learning_rate
+
         deltas_b[index] = -supervisor.learning_rate * gradients[index]
 
         # Calculate hidden layer deltas
@@ -286,7 +290,11 @@ class BackpropagationHelper:
             mult_gradients_weights = layers_weights[index + 1].t @ gradients[index + 1]
 
             gradients[index] = derivative * mult_gradients_weights
-            deltas_w[index] = (-supervisor.learning_rate * (gradients[index] @ phi_layers[index].t))
+
+            # deltas_w[index] = -supervisor.learning_rate * (gradients[index] @ phi_layers[index].t)
+            deltas_w[index] = gradients[index] @ phi_layers[index].t
+            deltas_w[index] *= -supervisor.learning_rate
+
             deltas_b[index] = (-supervisor.learning_rate * gradients[index])
 
     def adjust_weights(self) -> None:
