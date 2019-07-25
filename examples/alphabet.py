@@ -18,15 +18,39 @@ def load_images_data(
 
 def convert_data(data):
     chars = [
-        [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0],
-        [0, 0, 1, 1], [0, 0, 1, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 1, 0, 1],
-        [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], [0, 1, 1, 0],
-        [0, 1, 1, 1], [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 0, 0], [1, 0, 0, 1],
-        [1, 0, 1, 0], [1, 0, 1, 1], [1, 0, 1, 0], [1, 0, 1, 1], [1, 1, 0, 0],
-        [1, 1, 0, 1],
-
-        [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1], [1, 1, 1, 0],
-        [1, 1, 1, 1],
+        list(int(i) for i in s) for s in
+        ('00000',
+         '00001',
+         '00010',
+         '00011',
+         '00100',
+         '00101',
+         '00110',
+         '00111',
+         '01000',
+         '01001',
+         '01010',
+         '01011',
+         '01100',
+         '01101',
+         '01110',
+         '01111',
+         '10000',
+         '10001',
+         '10010',
+         '10011',
+         '10100',
+         '10101',
+         '10110',
+         '10111',
+         '11000',
+         '11001',
+         '11010',
+         '11011',
+         '11100',
+         '11101',
+         '11110',
+         '11111',)
     ]
 
     return [(pixels, answer, name) for (name, pixels), answer in zip(data, chars)]
@@ -49,11 +73,11 @@ def main():
 
     sup = Supervisor(mlp)
 
-    sup.train_set(train_set, 0.01, 100)
+    sup.train_set(train_set, 0.001, 100)
 
     for input_array, target_array, name in data:
         output = [round(result) for result in mlp.predict(input_array)]
-        print(f"{name} - {target_array} :: {output}")
+        print(f"{name} - Expected={target_array} :: Predicted={output}")
 
 
 if __name__ == '__main__':
