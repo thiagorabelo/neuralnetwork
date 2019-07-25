@@ -11,15 +11,6 @@ from typing import Union, List, TypeVar, Type, Callable, Text, Iterable, Tuple
 from util import MatBaseType, MatType, MatProxyType, RowType, ColType, Number
 
 
-def _get_type(obj: MatBaseType) -> Type[MatType]:
-    if isinstance(obj, ProxyMatrix):
-        return type(obj.matrix)
-    if isinstance(obj, MatrixBase):
-        return type(obj)
-
-    raise util.unexpected(obj)
-
-
 class MatrixBase(abc.ABC):
 
     # Should be defined in derived class
@@ -60,10 +51,10 @@ class MatrixBase(abc.ABC):
                   operation: Callable[[Number, Number], Number]) -> MatBaseType:
 
         if isinstance(other, MatrixBase):
-            return util.matrix_op(self, other, operation, _get_type(self))
+            return util.matrix_op(self, other, operation, self.get_class())
 
         if isinstance(other, numbers.Number):
-            return util.scalar_op(self, other, operation, _get_type(self))
+            return util.scalar_op(self, other, operation, self.get_class())
 
         raise util.unexpected(other)
 
@@ -81,10 +72,16 @@ class MatrixBase(abc.ABC):
         return col + row * self.cols
 
     def imap(self, func: Callable[[Number, int, int], Number]) -> None:
-        for i, j in self.indexes:
-            idx = self.dt_idx(i, j)
-            val = self.data[idx]
-            self.data[idx] = func(val, i, j)
+        # 7.77 µs ± 100 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+        for row in range(self.rows):
+            for col in range(self.cols):
+                idx = self.dt_idx(row, col)
+                self.data[idx] = func(self.data[idx], row, col)
+
+        # 8.3 µs ± 28.1 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+        # for i, j in self.indexes:
+        #     idx = self.dt_idx(i, j)
+        #     self.data[idx] = func(self.data[idx], i, j)
 
     def map(self, func: Callable[[Number, int, int], Number]) -> MatBaseType:
         new_copy = self.copy()
@@ -92,7 +89,7 @@ class MatrixBase(abc.ABC):
         return new_copy
 
     def randomize(self, rand: Callable[[], Number] = lambda: random.uniform(-1.0, 1.0)) -> None:
-        for i, _ in enumerate(self.data):
+        for i in range(len(self.data)):
             self.data[i] = rand()
 
     @property
@@ -181,16 +178,41 @@ class MatrixBase(abc.ABC):
                     )
                 )
 
-            cls = _get_type(self)
-            new_matrix = cls(self.rows, other.cols)
+            new_matrix = self.get_class()(self.rows, other.cols)
 
-            for row, col in new_matrix.indexes:
-                index = new_matrix.dt_idx(row, col)
-                new_matrix.data[index] = sum(
-                    map(lambda c: self.get(row, c) * other.get(c, col),  # pylint: disable=cell-var-from-loop
-                        range(self.cols)),
-                    0
-                )
+            # 7.28 µs ± 116 ns per loop (mean ± std. dev. of 7 runs,  100000 loops each) m1 @ m1.t
+            # 6.26 µs ± 93.3 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each) m1 @ m2
+            # row = 0
+            # while row < new_matrix.rows:
+            #     col = 0
+            #     while col < new_matrix.cols:
+            #         i = 0
+            #         sum_ = 0.0
+            #         while i < self.cols:
+            #             sum_ += self.get(row, i) * other.get(i, col)
+            #             i += 1
+            #         new_matrix.data[new_matrix.dt_idx(row, col)] = sum_
+            #         col += 1
+            #     row += 1
+
+            # 7.69 µs ± 62.5 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each) m1 @ m1.t
+            # 6.74 µs ± 121 ns per loop (mean ± std. dev. of 7 runs,  100000 loops each) m2 @ m2
+            for row in range(new_matrix.rows):
+                for col in range(new_matrix.cols):
+                    sum_ = 0.0
+                    for i in range(self.cols):
+                        sum_ += self.get(row, i) * other.get(i, col)
+                    new_matrix.data[new_matrix.dt_idx(row, col)] = sum_
+
+            # 9.39 µs ± 17.6 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each) m1 @ m1.t
+            # 8.46 µs ± 68.6 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each) m1 @ m2
+            # for row, col in new_matrix.indexes:
+            #     index = new_matrix.dt_idx(row, col)
+            #     new_matrix.data[index] = sum(
+            #         map(lambda c: self.get(row, c) * other.get(c, col),  # pylint: disable=cell-var-from-loop
+            #             range(self.cols)),
+            #         0
+            #     )
 
             return new_matrix
 
@@ -239,6 +261,9 @@ class MatrixBase(abc.ABC):
     @abc.abstractmethod
     def copy(self) -> MatBaseType: ...
 
+    @abc.abstractmethod
+    def get_class(self) -> Type[MatBaseType]: ...
+
 
 class Row:
     def __init__(self, matrix: MatType, row: int) -> None:
@@ -278,6 +303,7 @@ class Matrix(MatrixBase):
 
         self.rows = rows
         self.cols = cols
+        self._t = None
 
         if not data:
             self.data = [0] * self.array_length
@@ -311,7 +337,9 @@ class Matrix(MatrixBase):
 
     @property
     def t(self) -> MatProxyType:  # pylint: disable=invalid-name
-        return ProxyTransposed(self)
+        if self._t is None:
+            self._t = ProxyTransposed(self)
+        return self._t
 
     def transpose(self) -> MatType:
         return self.t * 1  # Make an actual Matrix as copy from ProxyTransposed
@@ -319,6 +347,9 @@ class Matrix(MatrixBase):
     def copy(self) -> MatBaseType:
         cls = type(self)
         return cls(self.rows, self.cols, self.data)
+
+    def get_class(self) -> Type[MatBaseType]:
+        return type(self)
 
 
 class ProxyMatrix(MatrixBase):
@@ -370,3 +401,6 @@ class ProxyTransposed(ProxyMatrix):
     def copy(self) -> MatBaseType:
         cls = type(self)
         return cls(self.matrix.copy())
+
+    def get_class(self) -> Type[MatBaseType]:
+        return type(self.matrix)

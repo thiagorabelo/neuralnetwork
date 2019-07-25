@@ -19,17 +19,17 @@ def main():
 
     mlp = MLP(1, [10, 30, 1],
               ACTIVATIONS_FUNCTIONS['sigmoid'],
-              ACTIVATIONS_FUNCTIONS['linear'])
+              ACTIVATIONS_FUNCTIONS['custom'])
 
-    mlp.randomise_weights(lambda: random.uniform(-1.0, 1.0))
+    mlp.randomise_weights(lambda: random.uniform(-0.05, 0.05))
 
-    sup = Supervisor(mlp, 0.01)
+    sup = Supervisor(mlp, 0.001)
 
-    sup.train_set(train_set, 0.005, 3000)
+    sup.train_set(train_set, 0.0005, 10000)
 
     validation = tuple(
         ([x], [func(x)])
-        for x in util.divide_arange(0.0, 10.0, 200)
+        for x in util.divide_arange(-1.0, 11.0, 200)
     )
 
     plot(

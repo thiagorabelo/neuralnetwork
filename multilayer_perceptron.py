@@ -299,6 +299,6 @@ class BackpropagationHelper:
     def adjust_weights(self) -> None:
         mlp = self.supervisor.mlp
 
-        for index, (deltas, deltas_b) in enumerate(zip(self.deltas_w, self.deltas_b)):
-            mlp.layers_weights[index] += deltas
+        for index, (deltas_w, deltas_b) in enumerate(zip(self.deltas_w, self.deltas_b)):
+            mlp.layers_weights[index] += deltas_w
             mlp.layers_bias[index] += deltas_b
