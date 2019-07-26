@@ -1,4 +1,4 @@
-# Multilayer Perceptron implementation in Pure Python (3.6+)
+# Multilayer Perceptron Implementation In Pure Python (3.6+)
 
 This project has no intent to be the fattest or useful.
 It has just didactic intention.
@@ -19,3 +19,5 @@ This should be put like:
     $ python -m examples xor
 
 The source files of the examples are in the folder `examples`.
+
+_Runs on PyPy3.6 v7.1.1_
