@@ -192,16 +192,13 @@ class Supervisor:
 
         return matrix
 
-    def train(self, input_array: List[Number], target_array: List[Number]) -> Number:
+    def train(self, matrix: MatBaseType, target: MatBaseType) -> Number:
         # Δ/δ	Delta/delta
         # Φ/φ	Phi/phi
 
         # δ = local_gradient
         # Δ = delta
         # φ = phi
-
-        matrix = Matrix.from_array(self.mlp.n_inputs, 1, input_array)
-        target = Matrix.from_array(len(target_array), 1, target_array)
 
         matrix = self.forward_signal(matrix)
 
@@ -214,11 +211,18 @@ class Supervisor:
         return inst_average_error
 
     def train_set(self,
-                  train_set: Iterable[Tuple[Iterable[Number], Iterable[Number]]],
+                  train_set: Iterable[Tuple[Union[Tuple[Number], List[Number], Iterable[Number]],
+                                            Union[Tuple[Number], List[Number], Iterable[Number]]]],
                   min_error: float,
                   max_epochs: int):
         average_global_error = 0.0
         train_set_size = len(train_set)
+
+        train_set = tuple(
+            (Matrix.from_array(self.mlp.n_inputs, 1, input_array),
+             Matrix.from_array(len(target_array), 1, target_array))
+            for input_array, target_array in train_set
+        )
 
         for epoch in range(1, max_epochs+1):
             random_train_set = random.sample(train_set, len(train_set))
