@@ -126,7 +126,8 @@ class MLP:
 
     def linear_combination(self,
                            input_matrix: MatBaseType,
-                           weights: MatBaseType, bias) -> MatBaseType:
+                           weights: MatBaseType,
+                           bias: MatBaseType) -> MatBaseType:
         # | w11 w21 wb1 | * | i1 |
         # | w12 w22 wb2 |   | i2 |
         #                   |  1 |
