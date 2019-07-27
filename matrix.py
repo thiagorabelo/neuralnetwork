@@ -66,7 +66,8 @@ class MatrixBase(abc.ABC):
             return util.imatrix_op(self, other, operation)
 
         if isinstance(other, numbers.Number):
-            return util.iscalar_op(self, other, operation)
+            self.imap(lambda val, row, col: operation(val, other))
+            return self
 
     def dt_idx(self, row: int, col: int) -> int:
         return col + row * self.cols
@@ -126,11 +127,7 @@ class MatrixBase(abc.ABC):
         return self._apply_op(other, operator.mul)
 
     def __imul__(self, other: Union[MatBaseType, Number]) -> MatBaseType:
-        if isinstance(other, numbers.Number):
-            return util.iscalar_op(self, other, operator.imul)
-
-        raise ValueError('Can not do inplace matrix multiplication. Only scalar inplace '
-                         'multiplications are allowed.')
+        return self._iapply_op(other, operator.imul)
 
     def __rmul__(self, other: Number) -> MatBaseType:
         return self._apply_op(other, operator.mul)

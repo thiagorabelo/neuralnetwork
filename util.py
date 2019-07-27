@@ -14,7 +14,7 @@ def match(mat1: MatType, mat2: MatType) -> bool:
     return mat2.rows == mat1.rows and mat2.cols == mat1.cols
 
 
-def doest_match(mat1: MatType, mat2: MatType) -> ValueError:
+def doesnt_match(mat1: MatType, mat2: MatType) -> ValueError:
     return ValueError('Matrix dimensions does not match: (%d, %d), (%d, %d)' % (
         mat1.rows, mat1.cols,
         mat2.rows, mat2.cols,
@@ -31,7 +31,7 @@ def matrix_op(left: MatBaseType,
               cls: MatType) -> MatBaseType:
 
     if not match(left, right):
-        raise doest_match(left, right)
+        raise doesnt_match(left, right)
 
     new_matrix = cls(right.rows, right.cols)
     new_matrix.imap(lambda val, row, col: operation(left.get(row, col), right.get(row, col)))
@@ -53,7 +53,7 @@ def imatrix_op(left: MatBaseType,
                operation: Callable[[Number, Number], Number]) -> MatBaseType:
 
     if not match(left, right):
-        raise doest_match(left, right)
+        raise doesnt_match(left, right)
 
     left.imap(lambda val, row, col: operation(left.get(row, col), right.get(row, col)))
     return left
