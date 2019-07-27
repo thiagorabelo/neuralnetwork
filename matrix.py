@@ -66,6 +66,7 @@ class MatrixBase(abc.ABC):
             return util.imatrix_op(self, other, operation)
 
         if isinstance(other, numbers.Number):
+            # self.data[:] = map(lambda val: operation(val, other), self.data)
             self.imap(lambda val, row, col: operation(val, other))
             return self
 
@@ -74,15 +75,15 @@ class MatrixBase(abc.ABC):
 
     def imap(self, func: Callable[[Number, int, int], Number]) -> None:
         # 7.77 µs ± 100 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
-        for row in range(self.rows):
-            for col in range(self.cols):
-                idx = self.dt_idx(row, col)
-                self.data[idx] = func(self.data[idx], row, col)
+        # for row in range(self.rows):
+        #     for col in range(self.cols):
+        #         idx = self.dt_idx(row, col)
+        #         self.data[idx] = func(self.data[idx], row, col)
 
         # 8.3 µs ± 28.1 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
-        # for i, j in self.indexes:
-        #     idx = self.dt_idx(i, j)
-        #     self.data[idx] = func(self.data[idx], i, j)
+        for i, j in self.indexes:
+            idx = self.dt_idx(i, j)
+            self.data[idx] = func(self.data[idx], i, j)
 
     def map(self, func: Callable[[Number, int, int], Number]) -> MatBaseType:
         new_copy = self.copy()

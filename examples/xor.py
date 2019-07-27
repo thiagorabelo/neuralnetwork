@@ -1,3 +1,5 @@
+import time
+
 from multilayer_perceptron import MLP, Supervisor, ACTIVATIONS_FUNCTIONS
 
 
@@ -12,7 +14,10 @@ def main():
         ([1, 1], [0]),
     )
 
-    sup.train_set(train_set, 0.005, 10000)
+    start_time = time.time()
+    sup.train_set(train_set, 0.0005, 10000)
+    end_time = time.time()
+    print(f"Spent time {end_time-start_time}")
 
     buffer = [''] * len(train_set)
     for idx, (input_array, target_array) in enumerate(train_set, 0):

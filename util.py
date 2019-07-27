@@ -44,6 +44,7 @@ def scalar_op(left: MatBaseType,
               cls: MatType) -> MatBaseType:
 
     new_matrix = cls(left.rows, left.cols)
+    # new_matrix.data[:] = map(lambda val: operation(val, scalar), left.data)
     new_matrix.imap(lambda val, row, col: operation(left.get(row, col), scalar))
     return new_matrix
 
