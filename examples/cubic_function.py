@@ -23,12 +23,13 @@ def main():
 
     mlp.randomise_weights(lambda: random.uniform(-1.0, 1.0))
 
-    sup = Supervisor(mlp, 0.01)
+    sup = Supervisor(mlp, 0.01, True)
 
     sup.train_set(train_set, 0.005, 3000)
+    norm = sup.normalizator
 
     validation = tuple(
-        ([x], [func(x)])
+        (norm.normalize_inputs([x]), norm.normalize_targets([func(x)]))
         for x in util.divide_arange(-4.0, 4.0, 200)
     )
 
