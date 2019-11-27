@@ -117,9 +117,11 @@ class Normalizator:
                  train_set: Iterable[Union[List[List[Number]],
                                            Tuple[List[Number], List[Number]]]],
                  input_size: int,
-                 output_size: int) -> None:
+                 output_size: int,
+                 scale: Number = 1.0) -> None:
         self._min_max_inputs: List[Number] = None
         self._min_max_targets: List[Number] = None
+        self._scale = scale
 
         self._init_func(self, train_set, input_size, output_size)
 
@@ -150,13 +152,15 @@ class Normalizator:
     def min_max_targets(self) -> List[Number]:
         return self._min_max_targets
 
-    @staticmethod
-    def normalize(num: Number, min_val: Number, max_val: Number) -> Number:
-        return (num - min_val) / (max_val - min_val)
+    @property
+    def scale(self) -> Number:
+        return self._scale
 
-    @staticmethod
-    def denormalize(num: Number, min_val: Number, max_val: Number) -> Number:
-        return num * (max_val - min_val) + min_val
+    def normalize(self, num: Number, min_val: Number, max_val: Number) -> Number:
+        return (self._scale * (num - min_val)) / (max_val - min_val)
+
+    def denormalize(self, num: Number, min_val: Number, max_val: Number) -> Number:
+        return (num * (max_val - min_val) + self._scale * min_val) / self._scale
 
     def normalize_inputs(self, inputs: List[Number]) -> List[Number]:
         return [self.normalize(num, min_, max_) for num, (min_, max_) in
