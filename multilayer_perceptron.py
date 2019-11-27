@@ -214,8 +214,8 @@ class Supervisor:
         return inst_average_error
 
     def train_set(self,
-                  train_set: Iterable[Union[Tuple[List[Number], List[Number]],
-                                            List[List[Number], List[Number]]]],
+                  train_set: Iterable[Union[List[List[Number]],
+                                            Tuple[List[Number], List[Number]]]],
                   min_error: float,
                   max_epochs: int):
         average_global_error = 0.0

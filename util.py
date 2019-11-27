@@ -114,8 +114,8 @@ def clip(min_val: Number, max_val: Number) -> \
 
 class Normalizator:
     def __init__(self,
-                 train_set: Iterable[Union[Tuple[List[Number], List[Number]],
-                                           List[List[Number], List[Number]]]],
+                 train_set: Iterable[Union[List[List[Number]],
+                                           Tuple[List[Number], List[Number]]]],
                  input_size: int,
                  output_size: int) -> None:
         self._min_max_inputs: List[Number] = None
@@ -125,8 +125,8 @@ class Normalizator:
 
     @staticmethod
     def _init_func(self,
-                   train_set: Iterable[Union[Tuple[List[Number], List[Number]],
-                                             List[List[Number], List[Number]]]],
+                   train_set: Iterable[Union[List[List[Number]],
+                                             Tuple[List[Number], List[Number]]]],
                    input_size: int,
                    output_size: int) -> None:
         input_layer = [[]] * input_size
