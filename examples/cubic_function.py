@@ -11,31 +11,32 @@ def main():
 
     train_set = tuple(
         ([i], [func(i)])
-        for i in util.divide_arange(-3.0, 3.0, 40)
+        for i in util.divide_arange(-3.0, 3.0, 100)
     )
 
     import random
     from pylab import plot, show
 
-    mlp = MLP(1, [10, 30, 1],
-              ACTIVATIONS_FUNCTIONS['sigmoid'],
-              ACTIVATIONS_FUNCTIONS['linear'])
+    mlp = MLP(1, [10, 30, 15, 5, 1],
+              ACTIVATIONS_FUNCTIONS['relu'],
+              ACTIVATIONS_FUNCTIONS['tanh'])
 
     mlp.randomise_weights(lambda: random.uniform(-1.0, 1.0))
 
-    sup = Supervisor(mlp, 0.01, True)
+    sup = Supervisor(mlp, 0.0003, True)
 
-    sup.train_set(train_set, 0.005, 3000)
+    sup.train_set(train_set, 0.0001, 5000)
     norm = sup.normalizator
 
     validation = tuple(
-        (norm.normalize_inputs([x]), norm.normalize_targets([func(x)]))
-        for x in util.divide_arange(-4.0, 4.0, 200)
+        ([x], [func(x)])
+        for x in util.divide_arange(-4.0, 4.0, 50)
     )
 
     plot(
         [i[0][0] for i in validation], [i[1][0] for i in validation], 'b',
-        [i[0][0] for i in validation], [mlp.predict(i[0]) for i in validation], 'r'
+        [i[0][0] for i in validation], [norm.denormalize_targets(
+            mlp.predict(norm.normalize_inputs(i[0]))) for i in validation], 'r'
     )
     show()
 

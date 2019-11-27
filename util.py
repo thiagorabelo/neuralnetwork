@@ -110,3 +110,66 @@ def clip(min_val: Number, max_val: Number) -> \
                         value)
         return wrapper
     return decorator
+
+
+class Normalizator:
+    def __init__(self,
+                 train_set: Iterable[Union[Tuple[List[Number], List[Number]],
+                                           List[List[Number], List[Number]]]],
+                 input_size: int,
+                 output_size: int) -> None:
+        self._min_max_inputs: List[Number] = None
+        self._min_max_targets: List[Number] = None
+
+        self._init_func(self, train_set, input_size, output_size)
+
+    @staticmethod
+    def _init_func(self,
+                   train_set: Iterable[Union[Tuple[List[Number], List[Number]],
+                                             List[List[Number], List[Number]]]],
+                   input_size: int,
+                   output_size: int) -> None:
+        input_layer = [[]] * input_size
+        target_layer = [[]] * output_size
+
+        for input_data, target_output in train_set:
+            for idx in range(input_size):
+                input_layer[idx].append(input_data[idx])
+
+            for idx in range(output_size):
+                target_layer[idx].append(target_output[idx])
+
+        self._min_max_inputs = [(min(x), max(x)) for x in input_layer]
+        self._min_max_targets = [(min(x), max(x)) for x in target_layer]
+
+    @property
+    def min_max_inputs(self) -> List[Number]:
+        return self._min_max_inputs
+
+    @property
+    def min_max_targets(self) -> List[Number]:
+        return self._min_max_targets
+
+    @staticmethod
+    def normalize(num: Number, min_val: Number, max_val: Number) -> Number:
+        return (num - min_val) / (max_val - min_val)
+
+    @staticmethod
+    def denormalize(num: Number, min_val: Number, max_val: Number) -> Number:
+        return num * (max_val - min_val) + min_val
+
+    def normalize_inputs(self, inputs: List[Number]) -> List[Number]:
+        return [self.normalize(num, min_, max_) for num, (min_, max_) in
+                zip(inputs, self.min_max_inputs)]
+
+    def denormalize_inputs(self, inputs: List[Number]) -> List[Number]:
+        return [self.denormalize(num, min_, max_) for num, (min_, max_) in
+                zip(inputs, self.min_max_inputs)]
+
+    def normalize_targets(self, targets: List[Number]) -> List[Number]:
+        return [self.normalize(num, min_, max_) for num, (min_, max_) in
+                zip(targets, self.min_max_targets)]
+
+    def denormalize_targets(self, targets: List[Number]) -> List[Number]:
+        return [self.denormalize(num, min_, max_) for num, (min_, max_) in
+                zip(targets, self.min_max_targets)]

@@ -179,8 +179,8 @@ class Supervisor:
         self.mlp = mlp
         self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
-        self.normalize = normalize
-        self.normalizator = None
+        self.normalize: bool = normalize
+        self.normalizator: util.Normalizator = None
 
     def forward_signal(self, matrix: MatBaseType) -> MatBaseType:
         self.backpropagation.phi_layers[0] = matrix
@@ -214,19 +214,25 @@ class Supervisor:
         return inst_average_error
 
     def train_set(self,
-                  train_set: Iterable[Tuple[Union[Tuple[Number], List[Number], Iterable[Number]],
-                                            Union[Tuple[Number], List[Number], Iterable[Number]]]],
+                  train_set: Iterable[Union[Tuple[List[Number], List[Number]],
+                                            List[List[Number], List[Number]]]],
                   min_error: float,
                   max_epochs: int):
         average_global_error = 0.0
         train_set_size = len(train_set)
 
-        normalized_train_set = self.normalize_func(train_set)
+        if self.normalize:
+            norm = util.Normalizator(train_set, self.mlp.n_inputs, self.mlp.n_outputs)
+            self.normalizator = norm
+            train_set = tuple(
+                (norm.normalize_inputs(train_data[0]), norm.normalize_targets(train_data[1]))
+                for train_data in train_set
+            )
 
         train_set = tuple(
             (Matrix.from_array(self.mlp.n_inputs, 1, input_array),
              Matrix.from_array(len(target_array), 1, target_array))
-            for input_array, target_array in normalized_train_set
+            for input_array, target_array in train_set
         )
 
         for epoch in range(1, max_epochs+1):
@@ -246,63 +252,6 @@ class Supervisor:
 
             if average_global_error <= min_error:
                 break
-
-    def normalize_func(self, train_set):
-        if not self.normalize:
-            return train_set
-
-        n_input = self.mlp.n_inputs
-        n_output = self.mlp.n_outputs
-
-        input_layer = [[]] * n_input
-        target_layer = [[]] * n_output
-
-        for input_data, target_output in train_set:
-            for idx in range(n_input):
-                input_layer[idx].append(input_data[idx])
-
-            for idx in range(n_output):
-                target_layer[idx].append(target_output[idx])
-
-        min_max_inputs = [(min(x), max(x)) for x in input_layer]
-        min_max_targets = [(min(x), max(x)) for x in target_layer]
-
-        def normalize(num, min_val, max_val):
-            return (num - min_val) / (max_val - min_val)
-
-        def apply_normalization(data_set, min_max):
-            normalized = []
-            for data, (min_, max_) in zip(data_set, min_max):
-                normalized.append([normalize(val, min_, max_) for val in data])
-            return normalized
-
-        class Normalizator:
-            @property
-            def min_max_inputs(self):
-                return min_max_inputs
-
-            @property
-            def min_max_targets(self):
-                return min_max_targets
-
-            def normalize_inputs(self, inputs):
-                return [normalize(num, min_, max_) for num, (min_, max_) in zip(inputs, self.min_max_inputs)]
-
-            def normalize_targets(self, inputs):
-                return [normalize(num, min_, max_) for num, (min_, max_) in zip(inputs, self.min_max_targets)]
-
-        normalizator = Normalizator()
-        self.normalizator = normalizator
-
-        normalized_input = apply_normalization(input_layer, min_max_inputs)
-        normalized_target = apply_normalization(target_layer, min_max_targets)
-
-        return tuple(
-            (list(input_values), list(output_values))
-            for input_values, output_values in
-            zip(zip(*normalized_input),
-                zip(*normalized_target))
-        )
 
 
 class BackpropagationHelper:
