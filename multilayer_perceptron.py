@@ -89,7 +89,8 @@ class MLP:
                  n_inputs: int,
                  layers: List[int],
                  activation_func: ActivationFunction,
-                 activation_func_output: ActivationFunction = None):
+                 activation_func_output: ActivationFunction = None,
+                 initial_weights_range=(-1.0, 1.0)):
 
         self.n_inputs = n_inputs
         self.n_outputs = layers[-1]
@@ -109,8 +110,9 @@ class MLP:
             weights = Matrix(layer, weights_list[index - 1])
             bias = Matrix(layer, 1)
 
-            weights.randomize(lambda: random.uniform(-1.0, 1.0))
-            bias.randomize(lambda: random.uniform(-1.0, 1.0))
+            if initial_weights_range is not None:
+                weights.randomize(lambda: random.uniform(*initial_weights_range))
+                bias.randomize(lambda: random.uniform(*initial_weights_range))
 
             self.layers_weights.append(weights)
             self.layers_bias.append(bias)

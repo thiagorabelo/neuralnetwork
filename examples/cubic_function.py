@@ -11,17 +11,14 @@ def main():
 
     train_set = tuple(
         ([i], [func(i)])
-        for i in util.divide_arange(-3.0, 3.0, 100)
+        for i in util.divide_arange(-9.0, 9.0, 100)
     )
 
-    import random
     from pylab import plot, show
 
-    mlp = MLP(1, [10, 30, 15, 5, 1],
-              ACTIVATIONS_FUNCTIONS['relu'],
-              ACTIVATIONS_FUNCTIONS['tanh'])
-
-    mlp.randomise_weights(lambda: random.uniform(-1.0, 1.0))
+    mlp = MLP(1, [10, 30, 20, 10, 1],
+              ACTIVATIONS_FUNCTIONS['tanh'],
+              ACTIVATIONS_FUNCTIONS['linear'])
 
     sup = Supervisor(mlp, 0.0003, True)
 
@@ -30,7 +27,7 @@ def main():
 
     validation = tuple(
         ([x], [func(x)])
-        for x in util.divide_arange(-4.0, 4.0, 50)
+        for x in util.divide_arange(-11.0, 11.0, 50)
     )
 
     plot(
