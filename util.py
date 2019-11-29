@@ -112,6 +112,73 @@ def clip(min_val: Number, max_val: Number) -> \
     return decorator
 
 
+class Scaler:
+    def __init__(self,
+                 values: Iterable[Number],
+                 scalar_min: Number = 0.0,
+                 scalar_max: Number = 1.0):
+        self.min: Number = min(values)
+        self.max: Number = max(values)
+        self.smin: Number = scalar_min
+        self.smax: Number = scalar_max
+        self.range: Number = self.max - self.min
+        self.srange: Number = scalar_max - scalar_min
+
+    def scale(self, value: Number) -> Number:
+        return (((value - self.min) * self.srange) / self.range) + self.smin
+
+    def reverse(self, value: Number) -> Number:
+        return (((value - self.smin) * self.range) / self.srange) + self.min
+
+    def scale_all(self, values: Iterable[Number]) -> Iterable[Number]:
+        return [self.scale(val) for val in values]
+
+    def reverse_all(self, values: Iterable[Number]) -> Iterable[Number]:
+        return [self.reverse(val) for val in values]
+
+
+class TrainSetScaler:
+    def __init__(self,
+                 train_set: Iterable[Union[List[List[Number]],
+                                     Tuple[List[Number], List[Number]]]]):
+        train_set_len = len(train_set)
+        input_len = len(train_set[0][0])
+        target_len = len(train_set[0][1])
+
+        input_layer = [[0] * train_set_len for _ in range(input_len)]
+        target_layer = [[0] * train_set_len for _ in range(target_len)]
+
+        for train_set_idx, (input_data, target_output) in enumerate(train_set):
+            for idx in range(input_len):
+                input_layer[idx][train_set_idx] = input_data[idx]
+
+            for idx in range(target_len):
+                target_layer[idx][train_set_idx] = target_output[idx]
+
+        self.input_scalers: List[Scaler] = [Scaler(input_data) for input_data in input_layer]
+        self.target_scalers: List[Scaler] = [Scaler(target_data) for target_data in target_layer]
+
+    @staticmethod
+    def _scale(scalers, values):
+        return [scaler.scale(val) for scaler, val in zip(scalers, values)]
+
+    @staticmethod
+    def _reverse(scalers, values):
+        return [scaler.reverse(val) for scaler, val in zip(scalers, values)]
+
+    def scale_input(self, input_values):
+        return self._scale(self.input_scalers, input_values)
+
+    def scale_target(self, target_values):
+        return self._scale(self.target_scalers, target_values)
+
+    def reverse_input(self, input_values):
+        return self._reverse(self.input_scalers, input_values)
+
+    def reverse_target(self, target_values):
+        return self._reverse(self.target_scalers, target_values)
+
+
 class Normalizator:
     def __init__(self,
                  train_set: Iterable[Union[List[List[Number]],
