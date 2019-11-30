@@ -16,14 +16,16 @@ def main():
         for i in util.divide_arange(-19.0, 29.0, 50)
     )
 
+    scaler = util.TrainSetScaler(train_set, -1.0, 1.0)
+    train_set = scaler.scale_train_set(train_set)
+
     mlp = MLP(1, [10, 30, 20, 10, 1],
               ACTIVATIONS_FUNCTIONS['tanh'],
               ACTIVATIONS_FUNCTIONS['custom'])
 
-    sup = Supervisor(mlp, 0.001, True)
+    sup = Supervisor(mlp, 0.001)
 
     sup.train_set(train_set, 0.0001, 5000)
-    norm = sup.normalizator
 
     validation = tuple(
         ([x], [func(x)])
@@ -32,8 +34,8 @@ def main():
 
     plot(
         [i[0][0] for i in validation], [i[1][0] for i in validation], 'b',
-        [i[0][0] for i in validation], [norm.denormalize_targets(
-            mlp.predict(norm.normalize_inputs(i[0]))) for i in validation], 'r'
+        [i[0][0] for i in validation], [scaler.reverse_target(mlp.predict(scaler.scale_input(i[0])))
+                                        for i in validation], 'r'
     )
     show()
 

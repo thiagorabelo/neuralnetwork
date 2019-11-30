@@ -140,7 +140,9 @@ class Scaler:
 class TrainSetScaler:
     def __init__(self,
                  train_set: Iterable[Union[List[List[Number]],
-                                     Tuple[List[Number], List[Number]]]]):
+                                     Tuple[List[Number], List[Number]]]],
+                 scalar_min: Number = 0.0,
+                 scalar_max: Number = 1.0):
         train_set_len = len(train_set)
         input_len = len(train_set[0][0])
         target_len = len(train_set[0][1])
@@ -155,8 +157,10 @@ class TrainSetScaler:
             for idx in range(target_len):
                 target_layer[idx][train_set_idx] = target_output[idx]
 
-        self.input_scalers: List[Scaler] = [Scaler(input_data) for input_data in input_layer]
-        self.target_scalers: List[Scaler] = [Scaler(target_data) for target_data in target_layer]
+        self.input_scalers: List[Scaler] = [Scaler(input_data, scalar_min, scalar_max)
+                                            for input_data in input_layer]
+        self.target_scalers: List[Scaler] = [Scaler(target_data, scalar_min, scalar_max)
+                                             for target_data in target_layer]
 
     @staticmethod
     def _scale(scalers, values):
@@ -178,69 +182,8 @@ class TrainSetScaler:
     def reverse_target(self, target_values):
         return self._reverse(self.target_scalers, target_values)
 
-
-class Normalizator:
-    def __init__(self,
-                 train_set: Iterable[Union[List[List[Number]],
-                                           Tuple[List[Number], List[Number]]]],
-                 input_size: int,
-                 output_size: int,
-                 scale: Number = 1.0) -> None:
-        self._min_max_inputs: List[Number] = None
-        self._min_max_targets: List[Number] = None
-        self._scale = scale
-
-        self._init_func(self, train_set, input_size, output_size)
-
-    @staticmethod
-    def _init_func(self,
-                   train_set: Iterable[Union[List[List[Number]],
-                                             Tuple[List[Number], List[Number]]]],
-                   input_size: int,
-                   output_size: int) -> None:
-        input_layer = [[]] * input_size
-        target_layer = [[]] * output_size
-
-        for input_data, target_output in train_set:
-            for idx in range(input_size):
-                input_layer[idx].append(input_data[idx])
-
-            for idx in range(output_size):
-                target_layer[idx].append(target_output[idx])
-
-        self._min_max_inputs = [(min(x), max(x)) for x in input_layer]
-        self._min_max_targets = [(min(x), max(x)) for x in target_layer]
-
-    @property
-    def min_max_inputs(self) -> List[Number]:
-        return self._min_max_inputs
-
-    @property
-    def min_max_targets(self) -> List[Number]:
-        return self._min_max_targets
-
-    @property
-    def scale(self) -> Number:
-        return self._scale
-
-    def normalize(self, num: Number, min_val: Number, max_val: Number) -> Number:
-        return (self._scale * (num - min_val)) / (max_val - min_val)
-
-    def denormalize(self, num: Number, min_val: Number, max_val: Number) -> Number:
-        return (num * (max_val - min_val) + self._scale * min_val) / self._scale
-
-    def normalize_inputs(self, inputs: List[Number]) -> List[Number]:
-        return [self.normalize(num, min_, max_) for num, (min_, max_) in
-                zip(inputs, self.min_max_inputs)]
-
-    def denormalize_inputs(self, inputs: List[Number]) -> List[Number]:
-        return [self.denormalize(num, min_, max_) for num, (min_, max_) in
-                zip(inputs, self.min_max_inputs)]
-
-    def normalize_targets(self, targets: List[Number]) -> List[Number]:
-        return [self.normalize(num, min_, max_) for num, (min_, max_) in
-                zip(targets, self.min_max_targets)]
-
-    def denormalize_targets(self, targets: List[Number]) -> List[Number]:
-        return [self.denormalize(num, min_, max_) for num, (min_, max_) in
-                zip(targets, self.min_max_targets)]
+    def scale_train_set(self, train_set):
+        return tuple(
+            (self.scale_input(i), self.scale_target(t))
+            for i, t in train_set
+        )

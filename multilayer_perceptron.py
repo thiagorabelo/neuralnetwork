@@ -177,12 +177,10 @@ class Supervisor:
 
     learning_rate: float = 0.8
 
-    def __init__(self, mlp: MLP, learning_rate: float = None, normalize: bool = False):
+    def __init__(self, mlp: MLP, learning_rate: float = None):
         self.mlp = mlp
         self.backpropagation = BackpropagationHelper(self)
         self.learning_rate = learning_rate or Supervisor.learning_rate
-        self.normalize: bool = normalize
-        self.normalizator: util.Normalizator = None
 
     def forward_signal(self, matrix: MatBaseType) -> MatBaseType:
         self.backpropagation.phi_layers[0] = matrix
@@ -222,14 +220,6 @@ class Supervisor:
                   max_epochs: int):
         average_global_error = 0.0
         train_set_size = len(train_set)
-
-        if self.normalize:
-            norm = util.Normalizator(train_set, self.mlp.n_inputs, self.mlp.n_outputs)
-            self.normalizator = norm
-            train_set = tuple(
-                (norm.normalize_inputs(train_data[0]), norm.normalize_targets(train_data[1]))
-                for train_data in train_set
-            )
 
         train_set = tuple(
             (Matrix.from_array(self.mlp.n_inputs, 1, input_array),
