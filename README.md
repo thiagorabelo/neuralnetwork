@@ -13,6 +13,7 @@ At the momment they are:
 - cubic_function 
 - quadratic_function
 - xor
+- matrix_compression
 
 This should be put like:
     

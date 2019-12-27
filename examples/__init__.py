@@ -4,41 +4,6 @@ import importlib
 import sys
 
 
-# def known_test():
-#     mlp = MLP(2, [2, 1])
-#     sup = Supervisor(mlp)
-#
-#     ws = [
-#         # L1
-#         0.8, 0.3,
-#         -0.6, -0.4,
-#
-#         # b1
-#         0.7,
-#         -0.4,
-#
-#         # L2
-#         0.7,
-#         -0.8,
-#
-#         # b2
-#         -0.3,
-#     ]
-#
-#     ws_iter = iter(ws)
-#
-#     for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
-#         weights.randomize(lambda: next(ws_iter))
-#         bias.randomize(lambda: next(ws_iter))
-#
-#     for weights, bias in zip(mlp.layers_weights, mlp.layers_bias):
-#         weights.print()
-#         bias.print()
-#         print('\n')
-#
-#     sup.train([1, 1], [0])
-
-
 def main():
     def get_argv():
         argv = sys.argv

@@ -217,7 +217,8 @@ class Supervisor:
                   train_set: Iterable[Union[List[List[Number]],
                                             Tuple[List[Number], List[Number]]]],
                   min_error: float,
-                  max_epochs: int):
+                  max_epochs: int,
+                  callback: Callable[[Number, Number], None] = None):
         average_global_error = 0.0
         train_set_size = len(train_set)
 
@@ -241,6 +242,9 @@ class Supervisor:
             average_global_error /= train_set_size
 
             print(f'AvgGlobalError={round(average_global_error, 15)} - Epoch={epoch}')
+
+            if callable(callback):
+                callback(epoch, average_global_error)
 
             if average_global_error <= min_error:
                 break
