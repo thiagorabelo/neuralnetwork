@@ -5,6 +5,11 @@
 #include <cstring>
 #include <memory>
 #include <iostream>
+// #include <sstream>
+
+
+template<typename T>
+class Row;
 
 
 template<typename T>
@@ -31,6 +36,21 @@ class Matrix
         {
         }
 
+        inline T get(size_t row, size_t col)
+        {
+            return m_data.get()[row * m_cols + col];
+        }
+
+        inline T operator()(size_t row, size_t col)
+        {
+            return get(row, col);
+        }
+
+        inline Row<T> operator[](size_t col)
+        {
+            return Row<T>(*this, col);
+        }
+
         void print() const
         {
             for (size_t row = 0; row < m_rows; row++) {
@@ -51,6 +71,35 @@ class Matrix
         size_t m_rows;
         size_t m_cols;
         std::unique_ptr<T[]> m_data;
+
+        friend class Row<T>;
+};
+
+
+template<typename T>
+class Row
+{
+    public:
+        Row(Matrix<T>& mat, size_t row)
+        : m_row{row}, m_mat{mat}
+        {
+        }
+
+        virtual ~Row()
+        {
+            // std::stringstream stream;
+            // stream << "~Row(mat, " << m_row << ")";
+            // std::cout << stream.str() << std::endl;
+        }
+
+        inline T operator[](size_t col)
+        {
+            return m_mat.get(m_row, col);
+        }
+
+    private:
+        size_t m_row;
+        Matrix<T>& m_mat;
 };
 
 
