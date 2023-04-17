@@ -5,11 +5,30 @@
 #include <cstring>
 #include <memory>
 #include <iostream>
-// #include <sstream>
+#include <algorithm>
+#include <sstream>
 
 
 template<typename T>
+class Matrix;
+
+template<typename T>
 class Row;
+
+template<typename Tp, typename Op>
+Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation);
+
+template<typename T>
+Matrix<T> operator+ (Matrix<T>&, T);
+
+template<typename T>
+Matrix<T> operator- (Matrix<T>&, T);
+
+template<typename T>
+Matrix<T> operator* (Matrix<T>&, T);
+
+template<typename T>
+Matrix<T> operator/ (Matrix<T>&, T);
 
 
 template<typename T>
@@ -51,15 +70,22 @@ class Matrix
             return Row<T>(*this, col);
         }
 
-        void print() const
+        void print(std::stringstream& stream)
         {
             for (size_t row = 0; row < m_rows; row++) {
                 for (size_t col = 0; col < m_cols; col++) {
-                    std::cout << m_data.get()[row * m_cols + col] << ", ";
+                    stream << m_data.get()[row * m_cols + col] << ", ";
                 }
-                std::cout << "\n";
+                stream << "\n";
             }
-            std::cout << std::endl;
+            stream << "\n";
+        }
+
+        void print()
+        {
+            std::stringstream stream;
+            print(stream);
+            std::cout << stream.str() << std::flush;
         }
 
         size_t size() const
@@ -67,12 +93,22 @@ class Matrix
             return m_rows * m_cols;
         }
 
+
+        /* FRIENDS */
+        friend class Row<T>;
+
+        template<typename Tp, typename Op>
+        friend Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation);
+
+        friend Matrix<T> operator+ <> (Matrix<T>& left, T right);
+        friend Matrix<T> operator- <> (Matrix<T>& left, T right);
+        friend Matrix<T> operator* <> (Matrix<T>& left, T right);
+        friend Matrix<T> operator/ <> (Matrix<T>& left, T right);
+
     private:
         size_t m_rows;
         size_t m_cols;
         std::unique_ptr<T[]> m_data;
-
-        friend class Row<T>;
 };
 
 
@@ -101,6 +137,67 @@ class Row
         size_t m_row;
         Matrix<T>& m_mat;
 };
+
+
+template<typename Tp, typename Op>
+Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation)
+{
+    Tp* result = new Tp[left.size()];
+    std::transform(
+        left.m_data.get(),
+        left.m_data.get()+left.size(),
+        result,
+        operation
+    );
+
+    return Matrix<Tp>{left.m_rows, left.m_cols, result, true};
+}
+
+
+template<typename T>
+Matrix<T> operator+(Matrix<T>& left, T right)
+{
+    return apply_op(
+        left,
+        [&right](T& val){
+            return val + right;
+        }
+    );
+}
+
+
+template<typename T>
+Matrix<T> operator- (Matrix<T>& left, T right)
+{
+    return apply_op(
+        left,
+        [&right](T& val) {
+            return val - right;
+        }
+    );
+}
+
+template<typename T>
+Matrix<T> operator* (Matrix<T>& left, T right)
+{
+    return apply_op(
+        left,
+        [&right](T& val) {
+            return val * right;
+        }
+    );
+}
+
+template<typename T>
+Matrix<T> operator/ (Matrix<T>& left, T right)
+{
+    return apply_op(
+        left,
+        [&right](T& val) {
+            return val / right;
+        }
+    );
+}
 
 
 #endif // MATRIX_HPP

@@ -8,13 +8,25 @@ int main()
                 4, 5, 6};
     Matrix<int> mat{2, 3, v};
 
-    //mat.print();
-
     std::cout << "mat[0][0] = " << mat[0][0] << "\n"
               << "mat[1][1] = " << mat[1][1] << "\n\n";
-    
+
     std::cout << "mat[1][2] = " << mat(1, 2) << "\n"
-              << "mat[0][1] = " << mat(0, 1) << std::endl;
+              << "mat[0][1] = " << mat(0, 1) << "\n" << std::endl;
+
+    mat.print();
+
+    Matrix<int> adicacao = mat + 2;
+    adicacao.print();
+
+    Matrix<int> subtracao = mat - 2;
+    subtracao.print();
+
+    Matrix<int> multiplicacao = mat * 2;
+    multiplicacao.print();
+
+    Matrix<int> divisao = mat / 2;
+    divisao.print();
 
     return 0;
 }
