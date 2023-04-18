@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <sstream>
+#include <utility>
 
 
 template<typename T>
@@ -51,8 +52,41 @@ class Matrix
             }
         }
 
+        Matrix(Matrix<T>& other)
+        : m_rows{other.m_rows}, m_cols{other.m_cols}, m_data{std::make_unique<T[]>(other.m_rows * other.m_cols)}
+        {
+            std::memcpy(m_data.get(), other.m_data.get(), sizeof(T) * m_rows * m_cols);
+            std::cout << "Matrix(Matrix<T>&)" << std::endl;
+        }
+
+        Matrix(Matrix<T>&& other)
+        : m_rows{other.m_rows}, m_cols{other.m_cols}
+        {
+            m_data = std::move(other.m_data);
+            std::cout << "Matrix(Matrix<T>&&)" << std::endl;
+        }
+
         virtual ~Matrix()
         {
+        }
+
+        Matrix<T>& operator=(Matrix<T>& other)
+        {
+            m_rows = other.m_rows;
+            m_cols = other.m_cols;
+            m_data.reset(new T[m_rows * m_cols]);
+            std::memcpy(m_data.get(), other.m_data.get(), sizeof(T) * m_rows * m_cols);
+            std::cout << "operator=(Matrix<T>&)" << std::endl;
+            return *this;
+        }
+
+        Matrix<T>& operator=(Matrix<T>&& other)
+        {
+            m_rows = other.m_rows;
+            m_cols = other.m_cols;
+            m_data = std::move(other.m_data);
+            std::cout << "operator=(Matrix<T>&&)" << std::endl;
+            return *this;
         }
 
         inline T get(size_t row, size_t col)
@@ -92,7 +126,6 @@ class Matrix
         {
             return m_rows * m_cols;
         }
-
 
         /* FRIENDS */
         friend class Row<T>;

@@ -2,6 +2,18 @@
 
 #include "matrix.hpp"
 
+Matrix<int> create_matrix_2x2()
+{
+    return Matrix<int>{
+        2, 2,
+        new int[4]{
+            0, 1,
+            2, 3
+        },
+        true
+    };
+}
+
 int main()
 {
     int v[6] = {1, 2, 3,
@@ -27,6 +39,15 @@ int main()
 
     Matrix<int> divisao = mat / 2;
     divisao.print();
+
+    Matrix<int> copy = divisao;
+    copy.print();
+
+    mat = copy;
+    mat.print();
+
+    mat = create_matrix_2x2();
+    mat.print();
 
     return 0;
 }
