@@ -17,19 +17,19 @@ template<typename T>
 class Row;
 
 template<typename Tp, typename Op>
-Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation);
+Matrix<Tp> apply_op(const Matrix<Tp>& left, Op operation);
 
 template<typename T>
-Matrix<T> operator+ (Matrix<T>&, T);
+Matrix<T> operator+ (const Matrix<T>&, const T);
 
 template<typename T>
-Matrix<T> operator- (Matrix<T>&, T);
+Matrix<T> operator- (const Matrix<T>&, const T);
 
 template<typename T>
-Matrix<T> operator* (Matrix<T>&, T);
+Matrix<T> operator* (const Matrix<T>&, const T);
 
 template<typename T>
-Matrix<T> operator/ (Matrix<T>&, T);
+Matrix<T> operator/ (const Matrix<T>&, const T);
 
 
 template<typename T>
@@ -131,12 +131,12 @@ class Matrix
         friend class Row<T>;
 
         template<typename Tp, typename Op>
-        friend Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation);
+        friend Matrix<Tp> apply_op(const Matrix<Tp>& left, Op operation);
 
-        friend Matrix<T> operator+ <> (Matrix<T>& left, T right);
-        friend Matrix<T> operator- <> (Matrix<T>& left, T right);
-        friend Matrix<T> operator* <> (Matrix<T>& left, T right);
-        friend Matrix<T> operator/ <> (Matrix<T>& left, T right);
+        friend Matrix<T> operator+ <> (const Matrix<T>& left, const T right);
+        friend Matrix<T> operator- <> (const Matrix<T>& left, const T right);
+        friend Matrix<T> operator* <> (const Matrix<T>& left, const T right);
+        friend Matrix<T> operator/ <> (const Matrix<T>& left, const T right);
 
     private:
         size_t m_rows;
@@ -173,7 +173,7 @@ class Row
 
 
 template<typename Tp, typename Op>
-Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation)
+Matrix<Tp> apply_op(const Matrix<Tp>& left, Op operation)
 {
     Tp* result = new Tp[left.size()];
     std::transform(
@@ -188,7 +188,7 @@ Matrix<Tp> apply_op(Matrix<Tp>& left, Op operation)
 
 
 template<typename T>
-Matrix<T> operator+(Matrix<T>& left, T right)
+Matrix<T> operator+(const Matrix<T>& left, const T right)
 {
     return apply_op(
         left,
@@ -198,9 +198,8 @@ Matrix<T> operator+(Matrix<T>& left, T right)
     );
 }
 
-
 template<typename T>
-Matrix<T> operator- (Matrix<T>& left, T right)
+Matrix<T> operator- (const Matrix<T>& left, const T right)
 {
     return apply_op(
         left,
@@ -211,7 +210,7 @@ Matrix<T> operator- (Matrix<T>& left, T right)
 }
 
 template<typename T>
-Matrix<T> operator* (Matrix<T>& left, T right)
+Matrix<T> operator* (const Matrix<T>& left, const T right)
 {
     return apply_op(
         left,
@@ -222,7 +221,7 @@ Matrix<T> operator* (Matrix<T>& left, T right)
 }
 
 template<typename T>
-Matrix<T> operator/ (Matrix<T>& left, T right)
+Matrix<T> operator/ (const Matrix<T>& left, const T right)
 {
     return apply_op(
         left,
