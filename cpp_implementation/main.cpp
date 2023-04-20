@@ -1,18 +1,32 @@
 #include <iostream>
-
 #include "matrix.hpp"
+
+
+Matrix<int> create_matrix_3x2()
+{
+    return Matrix<int>{
+        2, 3,
+        new int[6]{
+            9, 8, 7,
+            6, 5, 4
+        },
+        true
+    };
+}
+
 
 Matrix<int> create_matrix_2x2()
 {
     return Matrix<int>{
         2, 2,
         new int[4]{
-            0, 1,
-            2, 3
+            1, 2,
+            3, 4
         },
         true
     };
 }
+
 
 int main()
 {
@@ -28,25 +42,35 @@ int main()
 
     mat.print();
 
-    Matrix<int> adicacao = mat + 2;
-    adicacao.print();
+    (mat + 2).print();
 
-    Matrix<int> subtracao = mat - 2;
-    subtracao.print();
+    (mat - 2).print();
 
-    Matrix<int> multiplicacao = mat * 2;
-    multiplicacao.print();
+    (mat * 2).print();
 
-    Matrix<int> divisao = mat / 2;
-    divisao.print();
+    (mat / 2).print();
 
-    Matrix<int> copy = divisao;
+
+    (2 + mat).print();
+
+    (2 - mat).print();
+
+    (2 * mat).print();
+
+    (2 / mat).print();
+
+
+    Matrix<int> outra = create_matrix_3x2();
+
+    std::cout << std::endl;
+
+    Matrix<int> copy = outra;
     copy.print();
 
     mat = copy;
     mat.print();
 
-    mat = create_matrix_2x2();
+    outra = create_matrix_2x2();
     mat.print();
 
     return 0;
