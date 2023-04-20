@@ -50,7 +50,6 @@ int main()
 
     (mat / 2).print();
 
-
     (2 + mat).print();
 
     (2 - mat).print();
@@ -64,6 +63,10 @@ int main()
 
     std::cout << std::endl;
 
+    (mat + outra).print();
+
+    (outra - mat).print();
+
     Matrix<int> copy = outra;
     copy.print();
 
@@ -72,6 +75,32 @@ int main()
 
     outra = create_matrix_2x2();
     mat.print();
+
+    // try {
+    //     (create_matrix_2x2() + create_matrix_3x2()).print();
+    // } catch (MatrixOperationError& ex) {
+    //     std::cout << ex.what_str() << std::endl;
+    // }
+
+    Matrix<int> left_mult{
+        3, 2,
+        new int[6]{
+            1, 2,
+            3, 4,
+            5, 6
+        },
+        true
+    };
+    Matrix<int> right_mult{
+        2, 1,
+        new int[2]{
+            1,
+            2
+        },
+        true
+    };
+
+    (left_mult * right_mult).print();
 
     return 0;
 }

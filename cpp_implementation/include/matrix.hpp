@@ -1,12 +1,14 @@
 #ifndef MATRIX_HPP
 #define MATRIX_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
-#include <memory>
+#include <exception>
 #include <iostream>
-#include <algorithm>
+#include <memory>
 #include <sstream>
+#include <string>
 #include <utility>
 
 
@@ -18,6 +20,9 @@ class Row;
 
 template<typename Tp, typename Op>
 Matrix<Tp> apply_op(const Matrix<Tp>& left, Op operation);
+
+template<typename Tp, typename Op>
+Matrix<Tp> apply_op(const Matrix<Tp>& left, const Matrix<Tp>& right, Op operation);
 
 template<typename T>
 Matrix<T> operator+ (const Matrix<T>&, const T);
@@ -42,6 +47,66 @@ Matrix<T> operator* (const T, const Matrix<T>&);
 
 template<typename T>
 Matrix<T> operator/ (const T, const Matrix<T>&);
+
+template<typename T>
+Matrix<T> operator+ (const Matrix<T>& left, const Matrix<T>& right);
+
+template<typename T>
+Matrix<T> operator- (const Matrix<T>& left, const Matrix<T>& right);
+
+template<typename T>
+Matrix<T> operator* (const Matrix<T>& left, const Matrix<T>& right);
+
+
+class MatrixOperationError : public std::exception
+{
+    public:
+        MatrixOperationError(std::string cause)
+        : std::exception(), m_what{cause}
+        {
+        }
+
+        MatrixOperationError(const MatrixOperationError& ex)
+        : std::exception(ex), m_what{ex.m_what}
+        {
+        }
+
+        MatrixOperationError(MatrixOperationError&& ex)
+        : std::exception(std::move(ex))
+        {
+            m_what = std::move(ex.m_what);
+        }
+
+        MatrixOperationError& operator=(const MatrixOperationError& ex)
+        {
+            m_what = ex.m_what;
+            std::exception::operator=(ex);
+            return *this;
+        }
+
+        MatrixOperationError& operator=(MatrixOperationError&& ex)
+        {
+            m_what = std::move(ex.m_what);
+            std::exception::operator=(std::move(ex));
+            return *this;
+        }
+
+        virtual ~MatrixOperationError()
+        {
+        }
+
+        virtual const char* what() const noexcept
+        {
+            return m_what.c_str();
+        }
+
+        virtual std::string what_str() const noexcept
+        {
+            return m_what;
+        }
+    private:
+        std::string m_what;
+};
 
 
 template<typename T>
@@ -103,14 +168,24 @@ class Matrix
             return *this;
         }
 
-        inline T get(size_t row, size_t col)
+        inline T get(size_t row, size_t col) const
         {
             return m_data.get()[row * m_cols + col];
         }
 
-        inline T operator()(size_t row, size_t col)
+        inline T& set(size_t row, size_t col)
+        {
+            return m_data.get()[row * m_cols + col];
+        }
+
+        inline T operator()(size_t row, size_t col) const
         {
             return get(row, col);
+        }
+
+        inline T& operator()(size_t row, size_t col)
+        {
+            return set(row, col);
         }
 
         inline Row<T> operator[](size_t col)
@@ -136,6 +211,16 @@ class Matrix
             std::cout << stream.str() << std::flush;
         }
 
+        size_t rows() const
+        {
+            return m_rows;
+        }
+
+        size_t cols() const
+        {
+            return m_cols;
+        }
+
         size_t size() const
         {
             return m_rows * m_cols;
@@ -147,6 +232,9 @@ class Matrix
         template<typename Tp, typename Op>
         friend Matrix<Tp> apply_op(const Matrix<Tp>& left, Op operation);
 
+        template<typename Tp, typename Op>
+        friend Matrix<Tp> apply_op(const Matrix<Tp>& left, const Matrix<Tp>& right, Op operation);
+
         friend Matrix<T> operator+ <> (const Matrix<T>& left, const T right);
         friend Matrix<T> operator- <> (const Matrix<T>& left, const T right);
         friend Matrix<T> operator* <> (const Matrix<T>& left, const T right);
@@ -156,6 +244,10 @@ class Matrix
         friend Matrix<T> operator- <> (const T left, const Matrix<T>& right);
         friend Matrix<T> operator* <> (const T left, const Matrix<T>& right);
         friend Matrix<T> operator/ <> (const T left, const Matrix<T>& right);
+
+        friend Matrix<T> operator+ <> (const Matrix<T>& left, const Matrix<T>& right);
+        friend Matrix<T> operator- <> (const Matrix<T>& left, const Matrix<T>& right);
+        friend Matrix<T> operator* <> (const Matrix<T>& left, const Matrix<T>& right);
 
     private:
         size_t m_rows;
@@ -201,6 +293,29 @@ Matrix<Tp> apply_op(const Matrix<Tp>& matrix, Op operation)
         result.m_data.get(),
         operation
     );
+
+    return result;
+}
+
+
+template<typename Tp, typename Op>
+Matrix<Tp> apply_op(const Matrix<Tp>& left, const Matrix<Tp>& right, Op operation)
+{
+    if (!(left.m_rows == right.m_rows && left.m_cols == right.m_cols)) {
+        std::stringstream ss;
+        ss << "Matrices "
+           << "(" << left.m_rows << ", " << left.m_cols << ") and "
+           << "(" << right.m_rows << ", " << right.m_cols << ") "
+           << "does not match dimensions";
+        throw MatrixOperationError(ss.str());
+    }
+
+    Matrix<Tp> result{right.m_rows, right.m_cols};
+    for (size_t row = 0; row < left.m_rows; row++) {
+        for (size_t col = 0; col < left.m_cols; col++) {
+            result.set(row, col) = operation(left.get(row, col), right.get(row, col));
+        }
+    }
 
     return result;
 }
@@ -301,5 +416,58 @@ Matrix<T> operator/ (const T left, const Matrix<T>& right)
     );
 }
 
+
+template<typename T>
+Matrix<T> operator+ (const Matrix<T>& left, const Matrix<T>& right)
+{
+    return apply_op(
+        left,
+        right,
+        [](T a, T b) {
+            return a + b;
+        }
+    );
+}
+
+
+template<typename T>
+Matrix<T> operator- (const Matrix<T>& left, const Matrix<T>& right)
+{
+    return apply_op(
+        left,
+        right,
+        [](T a, T b) {
+            return a - b;
+        }
+    );
+}
+
+
+template<typename T>
+Matrix<T> operator* (const Matrix<T>& left, const Matrix<T>& right)
+{
+    if (left.m_cols != right.m_rows) {
+        std::stringstream ss;
+        ss << "Matrices "
+           << "M1(rows=" << left.m_rows << ", cols=" << left.m_cols << ") and "
+           << "M2(rows=" << right.m_rows << ", cols=" << right.m_cols << ") must "
+           << "match M1.cols and M2.rows";
+        throw MatrixOperationError(ss.str());
+    }
+
+    Matrix<T> result{left.m_rows, right.m_cols};
+
+    for (size_t row = 0; row < result.m_rows; row++) {
+        for (size_t col = 0; col < result.m_cols; col++) {
+            T sum = T(0);
+            for (size_t i = 0; i < left.m_cols; i++) {
+                sum += left.get(row, i) * right.get(i, col);
+            }
+            result.set(row, col) = sum;
+        }
+    }
+
+    return result;
+}
 
 #endif // MATRIX_HPP
