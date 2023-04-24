@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstddef>
 #include <functional>
+#include <random>
 #include <vector>
 
 #include "matrix.hpp"
@@ -111,9 +112,16 @@ class MLP
                 Matrix<double> weights{*layer, weight_list[index - 1]};
                 Matrix<double> bias{*layer, 1};
 
-                // randomize values for matrix
-                // - weights
-                // - bias
+                std::default_random_engine gen;
+                std::uniform_real_distribution<double> dist(initial_weights_range_begin, initial_weights_range_end);
+
+                auto randomizer = [&dist, &gen]()  { return dist(gen); };
+
+                weights.randomize(randomizer);
+                bias.randomize(randomizer);
+
+                m_layers_weights.push_back(weights);
+                m_layers_bias.push_back(bias);
 
                 index += 1;
             }

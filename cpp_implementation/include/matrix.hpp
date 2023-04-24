@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstring>
 #include <exception>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -243,6 +244,13 @@ class Matrix
             }
 
             return result;
+        }
+
+        void randomize(std::function<T(void)> rand_)
+        {
+            for (size_t idx = 0; i < size(); i++) {
+                m_data.get()[idx] = rand_();
+            }
         }
 
         /* FRIENDS */
