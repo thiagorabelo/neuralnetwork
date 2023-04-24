@@ -168,14 +168,19 @@ class Matrix
             return *this;
         }
 
+        virtual inline size_t get_array_idx(size_t row, size_t col) const
+        {
+            return row * m_cols + col;
+        }
+
         inline T get(size_t row, size_t col) const
         {
-            return m_data.get()[row * m_cols + col];
+            return m_data.get()[get_array_idx(row, col)];
         }
 
         inline T& set(size_t row, size_t col)
         {
-            return m_data.get()[row * m_cols + col];
+            return m_data.get()[get_array_idx(row, col)];
         }
 
         inline T operator()(size_t row, size_t col) const
@@ -197,7 +202,7 @@ class Matrix
         {
             for (size_t row = 0; row < m_rows; row++) {
                 for (size_t col = 0; col < m_cols; col++) {
-                    stream << m_data.get()[row * m_cols + col] << ", ";
+                    stream << m_data.get()[get_array_idx(row, col)] << ", ";
                 }
                 stream << "\n";
             }
@@ -224,6 +229,20 @@ class Matrix
         size_t size() const
         {
             return m_rows * m_cols;
+        }
+
+        // TODO: Create a class that is a proxy to original Matrix<T>
+        Matrix<T> transpose()
+        {
+            Matrix<T> result{m_cols, m_rows};
+
+            for (size_t row = 0; row < result.m_rows; row++) {
+                for (size_t col = 0; col < result.m_cols; col++) {
+                    result.set(row, col) = get(col, row);
+                }
+            }
+
+            return result;
         }
 
         /* FRIENDS */
@@ -469,5 +488,6 @@ Matrix<T> operator* (const Matrix<T>& left, const Matrix<T>& right)
 
     return result;
 }
+
 
 #endif // MATRIX_HPP

@@ -40,7 +40,13 @@ int main()
     std::cout << "mat[1][2] = " << mat(1, 2) << "\n"
               << "mat[0][1] = " << mat(0, 1) << "\n" << std::endl;
 
+    std::cout << "mat:\n";
     mat.print();
+
+    std::cout << "\nmat::transposed:\n";
+    mat.transpose().print();
+
+    std::cout << std::endl;
 
     (mat + 2).print();
 
