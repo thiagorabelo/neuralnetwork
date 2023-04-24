@@ -248,7 +248,7 @@ class Matrix
 
         void randomize(std::function<T(void)> rand_)
         {
-            for (size_t idx = 0; i < size(); i++) {
+            for (size_t idx = 0; idx < size(); idx++) {
                 m_data.get()[idx] = rand_();
             }
         }

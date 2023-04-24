@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <functional>
 #include <random>
+#include <tuple>
 #include <vector>
 
 #include "matrix.hpp"
@@ -125,6 +126,70 @@ class MLP
 
                 index += 1;
             }
+        }
+
+        Matrix<double> linear_combination(Matrix<double>& input_matrix,
+                                          Matrix<double>& weights,
+                                          Matrix<double>& bias)
+        {
+            Matrix<double> matrix = (weights * input_matrix);
+            return matrix + bias;
+        }
+
+        Matrix<double>& apply_activation_function(Matrix<double> matrix, bool last_layer)
+        {
+            std::function<double(double)> af = last_layer ? m_ac.func : m_ac_output.func;
+
+            for (size_t row = 0; row < matrix.rows(); row++) {
+                for (size_t col = 0; col < matrix.cols(); col++) {
+                    matrix.set(row, col) = af(matrix.get(row, col));
+                }
+            }
+
+            return matrix;
+        }
+
+        struct walk_layers
+        {
+            size_t m_index;
+            MLP& m_mlp;
+
+            walk_layers(MLP& mlp) : m_index{0}, m_mlp{mlp}
+            {
+            }
+
+            std::tuple<size_t, bool> next()
+            {
+                bool last_layer_index = m_mlp.m_layers_weights.size() - 1;
+                size_t index = m_index;
+                m_index += 1;
+                return std::make_tuple(index, index == last_layer_index);
+            }
+
+            bool has_next()
+            {
+                return m_index < m_mlp.m_layers_weights.size();
+            }
+        };
+
+        std::vector<double> predict(double input_array[], size_t length, bool take_ownership)
+        {
+            Matrix<double> matrix{m_n_inputs, 1, input_array, take_ownership};
+            walk_layers walker{*this};
+
+            while (walker.has_next()) {
+                size_t index;
+                bool is_last_layer;
+
+                std::tie(index, is_last_layer) = walker.next();
+                Matrix<double>& weight = m_layers_weights[index];
+                Matrix<double>& bias = m_layers_bias[index];
+
+                matrix = linear_combination(matrix, weight, bias);
+                matrix = apply_activation_function(matrix, is_last_layer);
+            }
+
+            return {}; // TODO: Termine esta parte
         }
 
     private:

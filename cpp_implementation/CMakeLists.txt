@@ -34,5 +34,7 @@ target_compile_options(
 set_target_properties(
     neuralnetwork
     PROPERTIES
+        CXX_STANDARD 17
+        CXX_EXTENSIONS OFF
         POSITION_INDEPENDENT_CODE ON
 )
