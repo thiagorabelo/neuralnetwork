@@ -132,7 +132,7 @@ class Matrix
             // std::cout << "Matrix(size_t, size_t, T[], bool)" << std::endl;
         }
 
-        Matrix(Matrix<T>& other)
+        Matrix(const Matrix<T>& other)
         : m_rows{other.m_rows}, m_cols{other.m_cols}, m_data{std::make_unique<T[]>(other.m_rows * other.m_cols)}
         {
             std::memcpy(m_data.get(), other.m_data.get(), sizeof(T) * m_rows * m_cols);

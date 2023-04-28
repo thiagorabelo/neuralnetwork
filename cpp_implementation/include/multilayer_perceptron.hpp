@@ -136,7 +136,7 @@ class MLP
             return matrix + bias;
         }
 
-        Matrix<double>& apply_activation_function(Matrix<double> matrix, bool last_layer)
+        Matrix<double>& apply_activation_function(Matrix<double>& matrix, bool last_layer)
         {
             std::function<double(double)> af = last_layer ? m_ac.func : m_ac_output.func;
 
