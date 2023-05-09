@@ -9,6 +9,7 @@
 #include <random>
 #include <tuple>
 #include <vector>
+#include <iostream>
 
 #include "matrix.hpp"
 
@@ -189,7 +190,7 @@ class MLP
                 matrix = apply_activation_function(matrix, is_last_layer);
             }
 
-            return {}; // TODO: Termine esta parte
+            return matrix.to_vector();
         }
 
     private:
@@ -201,6 +202,34 @@ class MLP
 
         ActivationFunction& m_ac;
         ActivationFunction& m_ac_output;
+};
+
+
+class Supervisor;
+
+
+class BackPropagationHelper
+{
+    public:
+        BackPropagationHelper(Supervisor& mlp);
+        void backpropagate(Matrix<double> error);
+        void adjust_weights();
+    private:
+        Supervisor& mlp;
+        // TODO: Outros atributos
+};
+
+
+class Supervisor
+{
+    public:
+        Supervisor(MLP& mlp, double learning_rate = 0.8)
+        : m_mlp{mlp}, m_backpropagation(*this), m_learning_rate{learning_rate}
+        {}
+    private:
+        MLP& m_mlp;
+        BackPropagationHelper m_backpropagation;
+        double m_learning_rate;
 };
 
 

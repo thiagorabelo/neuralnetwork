@@ -109,6 +109,14 @@ int main()
 
     // (left_mult * right_mult).print();
 
+    // Matrix<int> to_vec = create_matrix_3x2();
+
+    // std::cout << "[";
+    // for (auto i : to_vec.to_vector()) {
+    //     std::cout << i << ", ";
+    // }
+    // std::cout << "]" << std::endl;
+
     MLP mlp{
         1,
         {10, 30, 20, 10, 1},

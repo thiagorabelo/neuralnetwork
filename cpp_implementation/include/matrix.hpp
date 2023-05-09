@@ -232,6 +232,11 @@ class Matrix
             return m_rows * m_cols;
         }
 
+        std::vector<T> to_vector()
+        {
+            return std::vector<T>{m_data.get(), m_data.get() + size()};
+        }
+        
         // TODO: Create a class that is a proxy to original Matrix<T>
         Matrix<T> transpose()
         {
